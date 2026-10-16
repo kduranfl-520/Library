@@ -351,10 +351,10 @@ select.in { padding-right: 8px; }
 
 /* Covers view: standing books drawn as boxes, cover forward with the spine edge showing */
 .shelfrow.covers {
-  background: repeating-linear-gradient(to bottom, transparent 0 160px, var(--wood-plank-hi) 160px 163px, var(--wood-plank) 163px 174px, rgba(0, 0, 0, 0.5) 174px 176px);
+  background: repeating-linear-gradient(to bottom, transparent 0 168px, var(--wood-plank-hi) 168px 171px, var(--wood-plank) 171px 182px, rgba(0, 0, 0, 0.5) 182px 184px);
 }
 .shelfrow.covers { padding-right: 32px; }
-.shelfrow.covers .slot { height: 176px; }
+.shelfrow.covers .slot { height: 184px; }
 /* The Kindle dot sits just above its own book, whatever the book's height. */
 .slot:not(.cv) .ktop:not(.side) { top: auto; bottom: calc(16px + var(--h, 190px) + 2px); }
 .slot.cv .ktop { top: auto; bottom: calc(16px + var(--bh, 110px) + 4px); left: calc(6px + var(--bw, 80px) / 2 - 22px); }
@@ -460,7 +460,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v14';
+  var APP_VERSION = 'v15';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -803,7 +803,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var n = hash(title + '|' + authorName(b));
     var photo = !!b.spineId && typeof b.spineRatio === 'number' && b.spineRatio > 0.05 && b.spineRatio < 1.2;
     var art = !photo && !!b.coverId;
-    var w = 34 + (n % 5) * 3, hh = 176 + ((n >>> 3) % 5) * 9;
+    var w = 34 + (n % 5) * 3, hh = 150 + ((n >>> 3) % 8) * 9;
     if (photo) { hh = 190 + ((n >>> 3) % 3) * 10; w = Math.max(22, Math.min(72, Math.round(hh * b.spineRatio))); }
     var kids = photo
       ? [h('img', { class: 'sp-img', src: coverSrc(b.spineId), alt: '' })]
@@ -829,7 +829,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var title = String(b.title || '').trim();
     var label = (title || 'Untitled') + ' by ' + authorName(b);
     var n = hash(title + '|' + authorName(b));
-    var bw = 72 + (n % 4) * 2, bh = Math.round(bw * (1.46 + ((n >>> 4) % 4) * 0.03)), bt = 26 + ((n >>> 6) % 4) * 3;
+    var bw = 72 + (n % 4) * 2, bh = Math.round(bw * (1.3 + ((n >>> 4) % 10) * 0.05)), bt = 26 + ((n >>> 6) % 4) * 3;
     var photo = !!b.spineId && typeof b.spineRatio === 'number' && b.spineRatio > 0.05 && b.spineRatio < 1.2;
     var art = !photo && !!b.coverId;
     var front = h('div', { class: 'bk-front' });
