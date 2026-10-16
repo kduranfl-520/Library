@@ -460,7 +460,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v15';
+  var APP_VERSION = 'v16';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -704,10 +704,62 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       return { color: fmtHsl(base[0], bs, bl2), accent: fmtHsl(a[0], as, al) };
     } catch (e) { return { color: null, accent: null }; }
   }
+  /* Duplicate cover detection: a small fingerprint of how the picture looks, so a resized or re-saved copy still matches. */
+  async function dHash(blob) {
+    var src;
+    try { src = await createImageBitmap(blob); } catch (e) { src = await loadImg(blob); }
+    /* Shrink in two steps so every pixel of a large picture counts toward the small one. */
+    var big = document.createElement('canvas'); big.width = 72; big.height = 64;
+    var bx = big.getContext('2d'); bx.imageSmoothingEnabled = true; bx.imageSmoothingQuality = 'high';
+    bx.drawImage(src, 0, 0, 72, 64);
+    var c = document.createElement('canvas'); c.width = 9; c.height = 8;
+    var x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    x.drawImage(big, 0, 0, 9, 8);
+    var d = x.getImageData(0, 0, 9, 8).data, bits = '', cr = 0, cg = 0, cb = 0;
+    for (var q = 0; q < d.length; q += 4) { cr += d[q]; cg += d[q + 1]; cb += d[q + 2]; }
+    var cnt = d.length / 4; cr = Math.round(cr / cnt); cg = Math.round(cg / cnt); cb = Math.round(cb / cnt);
+    for (var r = 0; r < 8; r++) for (var k = 0; k < 8; k++) {
+      var i = (r * 9 + k) * 4, j = (r * 9 + k + 1) * 4;
+      var a = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114, b2 = d[j] * 0.299 + d[j + 1] * 0.587 + d[j + 2] * 0.114;
+      bits += a > b2 ? '1' : '0';
+    }
+    return bits + ':' + cr + ',' + cg + ',' + cb;
+  }
+  /* Same cover: the light and dark pattern matches closely and the overall colour is close too. */
+  function sameCover(a, b) {
+    if (!a || !b) return false;
+    var pa = a.split(':'), pb = b.split(':');
+    if (pa.length < 2 || pb.length < 2) return false;
+    var n = 0; for (var i = 0; i < 64; i++) if (pa[0][i] !== pb[0][i]) n++;
+    if (n > 4) return false;
+    var ca = pa[1].split(',').map(Number), cb2 = pb[1].split(',').map(Number);
+    return Math.abs(ca[0] - cb2[0]) + Math.abs(ca[1] - cb2[1]) + Math.abs(ca[2] - cb2[2]) < 45;
+  }
+  var hashCache = new Map();
+  async function bookHash(b) {
+    if (b.dh) return b.dh;
+    if (!b.coverId) return null;
+    if (hashCache.has(b.id)) return hashCache.get(b.id);
+    var h2 = null;
+    try { var resp = await fetch(coverSrc(b.coverId)); h2 = await dHash(await resp.blob()); } catch (e) {}
+    hashCache.set(b.id, h2);
+    return h2;
+  }
+  /* Returns the book (or staged entry) that already has this cover, or null. */
+  async function findDuplicate(dh, stagedList, skipId) {
+    for (var i = 0; i < (stagedList || []).length; i++) if (sameCover(dh, stagedList[i].dh)) return { title: stagedList[i].title || 'a cover you just chose', staged: true };
+    for (var j = 0; j < books.length; j++) {
+      if (books[j].id === skipId) continue;
+      var bh = await bookHash(books[j]);
+      if (sameCover(dh, bh)) return books[j];
+    }
+    return null;
+  }
   async function uploadCover(file) {
     var sh = await shrink(file);
     var r = await assets.upload(sh.blob, { type: 'image/jpeg' });
-    return { id: r.id, color: sh.color, accent: sh.accent };
+    var dh = null; try { dh = await dHash(file); } catch (e) {}
+    return { id: r.id, color: sh.color, accent: sh.accent, dh: dh };
   }
 
   /* ---------- shelf ---------- */
@@ -1136,13 +1188,19 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       hint.hidden = staged.length > 0;
     }
 
-    fileIn.addEventListener('change', function () {
-      Array.prototype.forEach.call(fileIn.files, function (f) {
+    fileIn.addEventListener('change', async function () {
+      var picked = Array.prototype.slice.call(fileIn.files); fileIn.value = '';
+      var skipped = [];
+      setMsg('Checking covers…');
+      for (var i = 0; i < picked.length; i++) {
+        var f = picked[i], dh = null;
+        try { dh = await dHash(f); } catch (e) {}
+        var dup = dh ? await findDuplicate(dh, staged, null) : null;
+        if (dup) { skipped.push(guessTitle(f.name) + ' (already ' + (dup.staged ? 'chosen' : 'on your shelf as ' + (String(dup.title || '').trim() || 'a book without a title')) + ')'); continue; }
         var u = URL.createObjectURL(f); sheetUrls.push(u);
-        staged.push({ file: f, url: u, title: guessTitle(f.name), inKindle: false });
-      });
-      fileIn.value = '';
-      setMsg('');
+        staged.push({ file: f, url: u, title: guessTitle(f.name), inKindle: false, dh: dh });
+      }
+      setMsg(skipped.length ? 'Skipped ' + plural(skipped.length, 'duplicate cover') + ': ' + skipped.join('; ') + '.' : '', skipped.length > 0);
       renderStaged();
     });
 
@@ -1170,7 +1228,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           saveBtn.textContent = 'Saving ' + (i + 1) + ' of ' + staged.length + '…';
           var up = s.file ? await uploadCover(s.file) : null;
           var ref = db.collection('books').doc();
-          await ref.set({ title: s.title.trim(), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, inKindle: !!s.inKindle, status: 'unread', series: seriesAdd.value.trim(), createdAt: Date.now() });
+          await ref.set({ title: s.title.trim(), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, dh: up ? up.dh : null, inKindle: !!s.inKindle, status: 'unread', series: seriesAdd.value.trim(), createdAt: Date.now() });
           done.push(s);
         }
         sheetBusy = false; saving = false;
@@ -1285,9 +1343,15 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var coverCol = [];
     if (assets) {
       var fileIn = h('input', { id: 'eFile', class: 'sr', type: 'file', accept: 'image/*' });
-      fileIn.addEventListener('change', function () {
+      fileIn.addEventListener('change', async function () {
         var f = fileIn.files && fileIn.files[0];
+        fileIn.value = '';
         if (!f) return;
+        try {
+          var dhE = await dHash(f);
+          var dupE = await findDuplicate(dhE, [], b.id);
+          if (dupE) { setMsg('That cover is already on your shelf' + (String(dupE.title || '').trim() ? ' (' + dupE.title + ')' : '') + '.', true); return; }
+        } catch (e) {}
         newFile = f;
         var u = URL.createObjectURL(f); sheetUrls.push(u);
         setThumb(u);
@@ -1345,7 +1409,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         patch.flat = flatIn.checked;
         patch.series = seriesIn.value.trim();
         patch.seriesNo = seriesNoIn.value.trim();
-        if (newFile) { var up = await uploadCover(newFile); patch.coverId = up.id; patch.color = up.color; patch.accent = up.accent; }
+        if (newFile) { var up = await uploadCover(newFile); patch.coverId = up.id; patch.color = up.color; patch.accent = up.accent; patch.dh = up.dh; }
         if (newSpine) {
           var sp = await shrink(newSpine);
           var sr = await assets.upload(sp.blob, { type: 'image/jpeg' });
