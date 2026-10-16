@@ -105,7 +105,7 @@ body {
   font-family: var(--f-body);
   font-size: 15px;
   line-height: 1.45;
-  padding-block: 20px 110px;
+  padding-block: 0 110px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
@@ -115,17 +115,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 h1, h2 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
 
 /* Header */
-.top h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; }
-.stats { margin: 6px 0 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-.tools { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+.top {
+  position: sticky; top: 0; z-index: 30; background: var(--bg);
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))) ;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--line);
+}
+.top h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+.stats { margin: 2px 0 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
 .in {
   width: 100%; min-height: 44px; padding: 0 12px; border-radius: 10px;
   border: 1px solid var(--line); background: var(--surface); color: var(--fg);
   font: inherit; font-size: 16px;
 }
 select.in { padding-right: 8px; }
-.search { flex: 1 1 240px; min-width: 0; }
-.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.search { flex: 1 1 240px; min-width: 0; min-height: 38px; }
+.seg { display: flex; flex-wrap: nowrap; gap: 6px; width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.seg::-webkit-scrollbar { display: none; }
+.seg .chip { flex: none; white-space: nowrap; }
 .chip {
   min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--surface); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums;
