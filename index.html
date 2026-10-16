@@ -133,6 +133,10 @@ select.in { padding-right: 8px; }
 .search { flex: 1 1 240px; min-width: 0; min-height: 38px; }
 .seg { display: flex; flex-wrap: nowrap; gap: 6px; width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .seg::-webkit-scrollbar { display: none; }
+.fold { width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: -2px; }
+.fold-btn { padding: 2px 2px; border: 0; background: none; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.fold-btn:disabled { opacity: 0.4; text-decoration: none; cursor: default; }
+.fold-sep { color: var(--line); font-size: 12px; }
 .seg .chip { flex: none; white-space: nowrap; }
 .chip {
   min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
@@ -439,6 +443,7 @@ select.in { padding-right: 8px; }
       <input id="q" class="in search" type="search" placeholder="Search title or author" aria-label="Search title or author" autocomplete="off">
       <div class="seg" id="seg" role="group" aria-label="Filter books"></div>
       <div class="seg" id="viewSeg" role="group" aria-label="Shelf view"></div>
+      <div class="fold" id="foldRow"></div>
     </div>
   </header>
   <main id="shelf" aria-live="polite"></main>
@@ -563,6 +568,7 @@ select.in { padding-right: 8px; }
   var statsEl = document.getElementById('stats');
   var segEl = document.getElementById('seg');
   var viewEl = document.getElementById('viewSeg');
+  var foldEl = document.getElementById('foldRow');
   var view = 'covers';
   try { var sv = localStorage.getItem('shelfView'); if (sv === 'spines' || sv === 'covers') view = sv; } catch (e) {}
   var collapsed = new Set();
@@ -899,18 +905,19 @@ select.in { padding-right: 8px; }
       } }, d[1]);
     });
     chips.push(h('button', { class: 'chip', type: 'button', onclick: function (e) { openBackup(e.currentTarget); } }, 'Backup'));
-    var authorKeys = Array.from(new Set(books.map(function (b) { return norm(b.author); }).filter(Boolean)));
-    var allClosed = authorKeys.length > 0 && authorKeys.every(function (k) { return collapsed.has(k); });
-    if (authorKeys.length) chips.push(h('button', { class: 'chip', type: 'button', onclick: function () {
-      if (allClosed) collapsed.clear(); else authorKeys.forEach(function (k) { collapsed.add(k); });
-      saveCollapsed(); render();
-    } }, allClosed ? 'Open all' : 'Authors only'));
     chips.push(h('button', { class: 'chip', type: 'button', title: 'Change how shelves are ordered', onclick: function () {
       sortBy = sortBy === 'last' ? 'first' : 'last';
       try { localStorage.setItem('shelfSort', sortBy); } catch (e) {}
       render();
     } }, 'A-Z by ' + (sortBy === 'last' ? 'last name' : 'first name')));
     viewEl.replaceChildren.apply(viewEl, chips);
+    var authorKeys = Array.from(new Set(books.map(function (b) { return norm(b.author); }).filter(Boolean)));
+    var openCount = authorKeys.filter(function (k) { return !collapsed.has(k); }).length;
+    foldEl.hidden = authorKeys.length < 2;
+    foldEl.replaceChildren(
+      h('button', { class: 'fold-btn', type: 'button', disabled: openCount === authorKeys.length, onclick: function () { collapsed.clear(); saveCollapsed(); render(); } }, 'Expand all'),
+      h('span', { class: 'fold-sep', 'aria-hidden': 'true', text: '|' }),
+      h('button', { class: 'fold-btn', type: 'button', disabled: openCount === 0, onclick: function () { authorKeys.forEach(function (k) { collapsed.add(k); }); saveCollapsed(); render(); } }, 'Collapse all'));
   }
 
   /* Shrink each title until all of it fits on its spine. */
