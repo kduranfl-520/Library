@@ -170,6 +170,7 @@ select.in { padding-right: 8px; }
   font-size: 15px; font-weight: 700; overflow-wrap: anywhere;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
+.plate.reading { background: #1C8C8C; color: #FFFFFF; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 8px rgba(40, 200, 200, 0.55); }
 .rail.clickable { cursor: pointer; }
 .rail.clickable:focus-visible { outline: 2px solid var(--brass); outline-offset: -3px; }
 .rail .chev { flex: none; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--rail-fg); transition: transform 0.15s; }
@@ -460,7 +461,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v17';
+  var APP_VERSION = 'v18';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1071,7 +1072,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             class: 'rail clickable' + (isCol ? ' closed' : ''), role: 'button', tabindex: '0', 'aria-expanded': String(!isCol),
             title: isCol ? 'Open this shelf' : 'Collapse this shelf', onclick: toggle,
             onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }
-          }, h('span', { class: 'chev', 'aria-hidden': 'true' }), h('h2', { class: 'plate' }, h('span', { class: 'pl', text: g.name })), h('span', { class: 'count' }, plural(g.items.length, 'book'), h('span', { class: 'ck', text: ' · ' + k + ' in Kindle' })),
+          }, h('span', { class: 'chev', 'aria-hidden': 'true' }), h('h2', { class: 'plate' + (g.items.some(function (b) { return b.status === 'reading'; }) ? ' reading' : '') }, h('span', { class: 'pl', text: g.name })), h('span', { class: 'count' }, plural(g.items.length, 'book'), h('span', { class: 'ck', text: ' · ' + k + ' in Kindle' })),
             h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + g.name, 'aria-label': 'Add a book to ' + g.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'),
             h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Remove ' + g.name + ' shelf', 'aria-label': 'Remove the ' + g.name + ' shelf', onclick: function (e) { e.stopPropagation(); openRemoveShelf(e.currentTarget, g); }, onkeydown: function (e) { e.stopPropagation(); } }, '✕'))];
           if (isCol) {
