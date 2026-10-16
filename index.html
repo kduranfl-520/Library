@@ -358,7 +358,7 @@ select.in { padding-right: 8px; }
   content: ""; position: absolute; left: 10px; right: 4px; bottom: 11px; height: 10px; pointer-events: none;
   background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
 }
-.bk-btn { position: relative; flex: none; width: var(--bw); height: var(--bh); margin: 0 -34px 0 20px; padding: 0; border: 0; background: none; cursor: pointer; }
+.bk-btn { position: relative; flex: none; width: var(--bw); height: var(--bh); margin: 0 -30px 0 12px; padding: 0; border: 0; background: none; cursor: pointer; }
 .book3d { position: absolute; inset: 0; transform-style: preserve-3d; transform: perspective(800px) rotateY(56deg); transform-origin: 50% 100%; }
 .bk-front {
   position: absolute; inset: 0; transform: translateZ(calc(var(--bt) / 2)); backface-visibility: hidden;
@@ -785,7 +785,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var n = hash(title + '|' + authorName(b));
     var photo = !!b.spineId && typeof b.spineRatio === 'number' && b.spineRatio > 0.05 && b.spineRatio < 1.2;
     var art = !photo && !!b.coverId;
-    var w = 44 + (n % 5) * 5, hh = 176 + ((n >>> 3) % 5) * 9;
+    var w = 34 + (n % 5) * 3, hh = 176 + ((n >>> 3) % 5) * 9;
     if (photo) { hh = 190 + ((n >>> 3) % 3) * 10; w = Math.max(22, Math.min(72, Math.round(hh * b.spineRatio))); }
     var kids = photo
       ? [h('img', { class: 'sp-img', src: coverSrc(b.spineId), alt: '' })]
@@ -809,7 +809,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var title = String(b.title || '').trim();
     var label = (title || 'Untitled') + ' by ' + authorName(b);
     var n = hash(title + '|' + authorName(b));
-    var bw = 76 + (n % 4) * 3, bh = Math.round(bw * (1.46 + ((n >>> 4) % 4) * 0.03)), bt = 26 + ((n >>> 6) % 4) * 3;
+    var bw = 62 + (n % 4) * 2, bh = Math.round(bw * (1.46 + ((n >>> 4) % 4) * 0.03)), bt = 26 + ((n >>> 6) % 4) * 3;
     var photo = !!b.spineId && typeof b.spineRatio === 'number' && b.spineRatio > 0.05 && b.spineRatio < 1.2;
     var art = !photo && !!b.coverId;
     var front = h('div', { class: 'bk-front' });
