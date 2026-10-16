@@ -351,14 +351,18 @@ select.in { padding-right: 8px; }
 
 /* Covers view: standing books drawn as boxes, cover forward with the spine edge showing */
 .shelfrow.covers {
-  background: repeating-linear-gradient(to bottom, transparent 0 182px, var(--wood-plank-hi) 182px 185px, var(--wood-plank) 185px 196px, rgba(0, 0, 0, 0.5) 196px 198px);
+  background: repeating-linear-gradient(to bottom, transparent 0 160px, var(--wood-plank-hi) 160px 163px, var(--wood-plank) 163px 174px, rgba(0, 0, 0, 0.5) 174px 176px);
 }
-.shelfrow.covers .slot { height: 198px; }
+.shelfrow.covers { padding-right: 32px; }
+.shelfrow.covers .slot { height: 176px; }
+/* The Kindle dot sits just above its own book, whatever the book's height. */
+.slot:not(.cv) .ktop:not(.side) { top: auto; bottom: calc(16px + var(--h, 190px) + 2px); }
+.slot.cv .ktop { top: auto; bottom: calc(16px + var(--bh, 110px) + 4px); left: calc(6px + var(--bw, 80px) / 2 + 2px); }
 .slot.cv::after {
   content: ""; position: absolute; left: 10px; right: 4px; bottom: 11px; height: 10px; pointer-events: none;
   background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
 }
-.bk-btn { position: relative; flex: none; width: var(--bw); height: var(--bh); margin: 0 -30px 0 12px; padding: 0; border: 0; background: none; cursor: pointer; }
+.bk-btn { position: relative; flex: none; width: var(--bw); height: var(--bh); margin: 0 -38px 0 6px; padding: 0; border: 0; background: none; cursor: pointer; }
 .book3d { position: absolute; inset: 0; transform-style: preserve-3d; transform: perspective(800px) rotateY(56deg); transform-origin: 50% 100%; }
 .bk-front {
   position: absolute; inset: 0; transform: translateZ(calc(var(--bt) / 2)); backface-visibility: hidden;
@@ -802,14 +806,16 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     btn.style.setProperty('--w', w + 'px');
     btn.style.setProperty('--h', hh + 'px');
     btn.style.setProperty('--fs', Math.max(14, Math.round(w * 0.3)) + 'px');
-    return h('div', { class: 'slot' }, btn, kMarker(b));
+    var slotEl = h('div', { class: 'slot' }, btn, kMarker(b));
+    slotEl.style.setProperty('--h', hh + 'px');
+    return slotEl;
   }
   /* Covers view: a standing book drawn as a box, cover forward, spine edge showing on the left. */
   function book3d(b) {
     var title = String(b.title || '').trim();
     var label = (title || 'Untitled') + ' by ' + authorName(b);
     var n = hash(title + '|' + authorName(b));
-    var bw = 62 + (n % 4) * 2, bh = Math.round(bw * (1.46 + ((n >>> 4) % 4) * 0.03)), bt = 26 + ((n >>> 6) % 4) * 3;
+    var bw = 72 + (n % 4) * 2, bh = Math.round(bw * (1.46 + ((n >>> 4) % 4) * 0.03)), bt = 26 + ((n >>> 6) % 4) * 3;
     var photo = !!b.spineId && typeof b.spineRatio === 'number' && b.spineRatio > 0.05 && b.spineRatio < 1.2;
     var art = !photo && !!b.coverId;
     var front = h('div', { class: 'bk-front' });
@@ -834,6 +840,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     btn.style.setProperty('--bt', bt + 'px');
     var slot = h('div', { class: 'slot cv' }, btn, kMarker(b));
     slot.style.setProperty('--bw', bw + 'px');
+    slot.style.setProperty('--bh', bh + 'px');
     return slot;
   }
   function flatBook(b) {
