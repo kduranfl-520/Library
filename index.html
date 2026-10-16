@@ -460,6 +460,20 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
+  var APP_VERSION = 'v14';
+  /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
+  function checkForUpdate(manual) {
+    return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var m = /var APP_VERSION = '([^']+)'/.exec(t);
+        if (!m) return 'unknown';
+        if (m[1] !== APP_VERSION && location.search.indexOf('v=' + m[1]) < 0) { location.replace(location.pathname + '?v=' + m[1]); return 'updating'; }
+        return m[1] === APP_VERSION ? 'current' : 'unknown';
+      })
+      .catch(function () { return 'offline'; });
+  }
+  setTimeout(function () { checkForUpdate(false); }, 800);
   var db = null, assets = null, storeProblem = '';
   /* ---------- on-device storage (IndexedDB). Nothing leaves this browser. ---------- */
   var urlCache = new Map();
@@ -1415,6 +1429,12 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         } }, 'Save backup file'),
         h('label', { class: 'btn pick' }, 'Restore from file', fileIn)),
       msg,
+      h('p', { class: 'hint', text: 'App version ' + APP_VERSION }),
+      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', onclick: async function () {
+        setMsg('Checking…');
+        var r = await checkForUpdate(true);
+        setMsg(r === 'current' ? 'You have the latest version.' : r === 'offline' ? 'Could not check. Are you online?' : r === 'updating' ? 'Updating…' : 'Could not tell. Try again in a minute.');
+      } }, 'Check for update')),
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Close'))
     ], from, null);
   }
