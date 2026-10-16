@@ -357,7 +357,7 @@ select.in { padding-right: 8px; }
 .shelfrow.covers .slot { height: 176px; }
 /* The Kindle dot sits just above its own book, whatever the book's height. */
 .slot:not(.cv) .ktop:not(.side) { top: auto; bottom: calc(16px + var(--h, 190px) + 2px); }
-.slot.cv .ktop { top: auto; bottom: calc(16px + var(--bh, 110px) + 4px); left: calc(6px + var(--bw, 80px) / 2 + 2px); }
+.slot.cv .ktop { top: auto; bottom: calc(16px + var(--bh, 110px) + 4px); left: calc(6px + var(--bw, 80px) / 2 - 22px); }
 .slot.cv::after {
   content: ""; position: absolute; left: 10px; right: 4px; bottom: 11px; height: 10px; pointer-events: none;
   background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
