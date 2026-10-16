@@ -284,7 +284,7 @@ select.in { padding-right: 8px; }
 .flat {
   --shade: linear-gradient(to bottom, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.35));
   width: var(--w, 170px); height: var(--h, 32px); margin: 1px 0 0; padding: 0 30px; border-radius: 2px;
-  display: flex; align-items: center; justify-content: center; transform: translateX(var(--dx, 0px));
+  display: flex; align-items: center; justify-content: center; transform: translateX(var(--dx, 0px)) rotate(var(--rot, 0deg));
 }
 .flat .sp-t { writing-mode: horizontal-tb; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .flat::before, .flat::after { content: ""; position: absolute; top: 0; bottom: 0; }
@@ -860,7 +860,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     btn.style.setProperty('--w', w + 'px');
     btn.style.setProperty('--h', hh + 'px');
     btn.style.setProperty('--fs', Math.max(13, Math.round(hh * 0.42)) + 'px');
-    btn.style.setProperty('--dx', (((n >>> 5) % 5) - 2) * 3 + 'px');
+    btn.style.setProperty('--dx', (((n >>> 5) % 9) - 4) * 4 + 'px');
+    btn.style.setProperty('--rot', ((((n >>> 9) % 9) - 4) * 0.55).toFixed(2) + 'deg');
     return h('div', { class: 'fwrap' }, kMarker(b, 'side'), btn);
   }
   function shelfItems(items) {
