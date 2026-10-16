@@ -462,7 +462,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v20';
+  var APP_VERSION = 'v21';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1086,6 +1086,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }
           }, h('span', { class: 'chev', 'aria-hidden': 'true' }), h('h2', { class: 'plate' + (g.items.some(function (b) { return b.status === 'reading'; }) ? ' reading' : '') }, h('span', { class: 'pl', text: g.name })), h('span', { class: 'count' }, plural(g.items.length, 'book'), h('span', { class: 'ck', text: ' · ' + k + ' in Kindle' })),
             h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + g.name, 'aria-label': 'Add a book to ' + g.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'),
+            h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Rename ' + g.name, 'aria-label': 'Rename ' + g.name, onclick: function (e) { e.stopPropagation(); openRenameShelf(e.currentTarget, g); }, onkeydown: function (e) { e.stopPropagation(); } }, '✎'),
             h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Remove ' + g.name + ' shelf', 'aria-label': 'Remove the ' + g.name + ' shelf', onclick: function (e) { e.stopPropagation(); openRemoveShelf(e.currentTarget, g); }, onkeydown: function (e) { e.stopPropagation(); } }, '✕'))];
           if (isCol) {
             /* collapsed: the author bar only */
@@ -1464,6 +1465,36 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     ], from, titleIn);
   }
 
+  function openRenameShelf(from, g) {
+    var msg = h('p', { class: 'msg', role: 'status' });
+    var busyNow = false;
+    var nameIn = h('input', { id: 'fRename', class: 'in', type: 'text', autocomplete: 'off', value: g.name });
+    var dl = h('datalist', { id: 'authorList' }, uniqueAuthors().map(function (a) { return h('option', { value: a }); }));
+    nameIn.setAttribute('list', 'authorList');
+    var go = h('button', { class: 'btn primary', type: 'submit' }, 'Save name');
+    sheet.onsubmit = async function (e) {
+      e.preventDefault();
+      if (busyNow) return;
+      var nn = nameIn.value.trim();
+      if (!nn) { msg.textContent = 'Enter a name.'; msg.className = 'msg err'; return; }
+      if (nn === g.name) { closeSheet(); return; }
+      var old = norm(g.name);
+      var targets = books.concat(emptyShelves).filter(function (x) { return norm(x.author) === old; });
+      busyNow = true; sheetBusy = true; go.disabled = true; msg.textContent = 'Saving…'; msg.className = 'msg';
+      try {
+        for (var i = 0; i < targets.length; i++) await db.doc('books/' + targets[i].id).update({ author: nn });
+        var oc = collapsed.has(old); if (oc) { collapsed.delete(old); collapsed.add(norm(nn)); saveCollapsed(); }
+        sheetBusy = false; closeSheet();
+      } catch (err) { busyNow = false; sheetBusy = false; go.disabled = false; msg.textContent = 'Could not rename. Try again.'; msg.className = 'msg err'; }
+    };
+    showSheet([
+      h('h2', { id: 'sheetTitle', text: 'Rename author' }),
+      h('label', { class: 'field' }, h('span', { text: 'Author name' }), nameIn, dl),
+      h('p', { class: 'hint', text: 'Every book on this shelf moves to the new name. If that name already has a shelf, the two shelves are combined.' }),
+      msg,
+      h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Cancel'), go)
+    ], from, nameIn);
+  }
   function openRemoveShelf(from, g) {
     var msg = h('p', { class: 'msg', role: 'status' });
     var busyNow = false;
