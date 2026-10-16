@@ -1145,6 +1145,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         for (var i = 0; i < staged.length; i++) {
           var s = staged[i];
           setMsg('Saving ' + (i + 1) + ' of ' + staged.length + '…');
+          saveBtn.textContent = 'Saving ' + (i + 1) + ' of ' + staged.length + '…';
           var up = s.file ? await uploadCover(s.file) : null;
           var ref = db.collection('books').doc();
           await ref.set({ title: s.title.trim(), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, inKindle: !!s.inKindle, status: 'unread', series: seriesAdd.value.trim(), createdAt: Date.now() });
@@ -1411,6 +1412,21 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   }
 
   /* ---------- wiring ---------- */
+  /* The keyboard's Done/Go key should only close the keyboard, not save the sheet. */
+  sheet.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (e.key === 'Enter' && t && t.tagName === 'INPUT' && (t.type === 'text' || t.type === 'search' || t.type === 'number')) {
+      e.preventDefault();
+      try { t.blur(); } catch (err) {}
+    }
+  });
+  /* After the keyboard closes, put the page back where it belongs so touches line up again. */
+  sheet.addEventListener('focusout', function () {
+    setTimeout(function () {
+      var a = document.activeElement;
+      if (!a || a === document.body) { try { window.scrollTo(0, 0); } catch (e) {} }
+    }, 120);
+  });
   fab.addEventListener('click', function (e) { openAdd(e.currentTarget); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitTitles(shelf); fitPlates(shelf); });
   qEl.addEventListener('input', function () { query = qEl.value; render(); });
