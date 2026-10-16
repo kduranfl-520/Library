@@ -355,7 +355,7 @@ select.in { padding-right: 8px; }
 .shelfrow.covers {
   background: repeating-linear-gradient(to bottom, transparent 0 168px, var(--wood-plank-hi) 168px 171px, var(--wood-plank) 171px 182px, rgba(0, 0, 0, 0.5) 182px 184px);
 }
-.shelfrow.covers { padding-right: 32px; }
+.shelfrow.covers { padding-right: 10px; flex-wrap: nowrap; }
 .shelfrow.covers .slot { height: 184px; }
 /* The Kindle dot sits just above its own book, whatever the book's height. */
 .slot:not(.cv) .ktop:not(.side) { top: auto; bottom: calc(16px + var(--h, 190px) + 2px); }
@@ -364,8 +364,8 @@ select.in { padding-right: 8px; }
   content: ""; position: absolute; left: 10px; right: 4px; bottom: 11px; height: 10px; pointer-events: none;
   background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
 }
-.bk-btn { position: relative; flex: none; width: var(--bw); height: var(--bh); margin: 0 -38px 0 6px; padding: 0; border: 0; background: none; cursor: pointer; }
-.book3d { position: absolute; inset: 0; transform-style: preserve-3d; transform: perspective(800px) rotateY(56deg); transform-origin: 50% 100%; }
+.bk-btn { position: relative; flex: none; width: var(--bw); height: var(--bh); margin: 0 calc(var(--pitch, 40px) - var(--bw) - 6px) 0 6px; padding: 0; border: 0; background: none; cursor: pointer; }
+.book3d { position: absolute; inset: 0; transform-style: preserve-3d; transform: perspective(800px) rotateY(var(--rot, 56deg)); transform-origin: 50% 100%; }
 .bk-front {
   position: absolute; inset: 0; transform: translateZ(calc(var(--bt) / 2)); backface-visibility: hidden;
   border-radius: 1px 3px 3px 1px; overflow: hidden; background: var(--surface-2);
@@ -462,7 +462,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v21';
+  var APP_VERSION = 'v22';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -932,6 +932,36 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     btn.style.setProperty('--rot', ((((n >>> 9) % 9) - 4) * 0.55).toFixed(2) + 'deg');
     return h('div', { class: 'fwrap' }, kMarker(b, 'side'), btn);
   }
+  /* Covers view: up to 12 books per shelf row. The fewer the books, the more cover shows; the more, the more spine. */
+  var ROW_MAX = 12;
+  function tiltFor(k) { return Math.round(26 + (Math.min(k, ROW_MAX) - 1) * (50 / (ROW_MAX - 1))); }
+  function shelfRows(items) {
+    if (view !== 'covers') return [h('div', { class: 'shelfrow' }, shelfItems(items))];
+    var flats = items.filter(function (b) { return b.flat; }), std = items.filter(function (b) { return !b.flat; });
+    var rows = [];
+    for (var i = 0; i < Math.max(std.length, 1); i += ROW_MAX) {
+      var chunk = std.slice(i, i + ROW_MAX), k = chunk.length;
+      var kids = chunk.map(book3d);
+      if (i + ROW_MAX >= std.length && flats.length) kids = kids.concat(shelfItems(flats));
+      var row = h('div', { class: 'shelfrow covers' }, kids);
+      row.dataset.n = String(k);
+      row.style.setProperty('--rot', tiltFor(k) + 'deg');
+      rows.push(row);
+    }
+    return rows;
+  }
+  /* Spread each covers row so its books fit the width exactly: gap shrinks as the shelf fills. */
+  function fitCovers(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('.shelfrow.covers'), function (row) {
+      var k = parseInt(row.dataset.n, 10) || 0, w = row.clientWidth - 34;
+      if (!k || w <= 0) return;
+      var th = tiltFor(k) * Math.PI / 180, bw = 75, bt = 29;
+      var vis = bw * Math.cos(th) + bt * Math.sin(th);
+      var pitch = k > 1 ? (w - 6 - bw / 2 - vis / 2) / (k - 1) : vis + 14;
+      pitch = Math.max(14, Math.min(pitch, vis + 14));
+      row.style.setProperty('--pitch', pitch.toFixed(1) + 'px');
+    });
+  }
   function shelfItems(items) {
     var out = [], flats = [];
     var per = view === 'covers' ? 4 : 5;
@@ -1093,9 +1123,9 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           } else if (!g.items.length) {
             kids.push(h('div', { class: 'emptyshelf', text: 'No books yet. Tap + Add to put the first one here.' }));
           } else if (bySeries.size === 0) {
-            kids.push(h('div', { class: rowCls }, shelfItems(g.items)));
+            shelfRows(g.items).forEach(function (r) { kids.push(r); });
           } else {
-            if (loose.length) kids.push(h('div', { class: rowCls }, shelfItems(loose)));
+            if (loose.length) shelfRows(loose).forEach(function (r) { kids.push(r); });
             Array.from(bySeries.values()).sort(function (a, b) { return cmp(titleKey(a.name), titleKey(b.name)); }).forEach(function (sr) {
               sr.items.sort(function (a, b) {
                 var na = parseFloat(a.seriesNo), nb = parseFloat(b.seriesNo);
@@ -1108,7 +1138,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
               });
               kids.push(h('div', { class: 'subrail' }, h('span', { class: 'sname', text: sr.name }), h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
                 h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { openAdd(e.currentTarget, { author: g.name, series: sr.name }); } }, '+ Add')));
-              kids.push(h('div', { class: rowCls }, shelfItems(sr.items)));
+              shelfRows(sr.items).forEach(function (r) { kids.push(r); });
             });
           }
           nodes.push(h('section', { class: 'case' + (isCol ? ' shut' : '') }, kids));
@@ -1118,6 +1148,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     shelf.replaceChildren.apply(shelf, nodes);
     fitTitles(shelf);
     fitPlates(shelf);
+    fitCovers(shelf);
   }
   /* Shrink an author's name until it fits on one line in its plate. */
   function fitPlates(root) {
@@ -1130,7 +1161,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       while (size > 8 && avail > 0 && inner.scrollWidth > avail) { size -= 0.5; pl.style.fontSize = size + 'px'; }
     });
   }
-  window.addEventListener('resize', function () { fitPlates(shelf); });
+  window.addEventListener('resize', function () { fitPlates(shelf); fitCovers(shelf); });
 
   /* ---------- sheet plumbing ---------- */
   function uniqueAuthors() {
