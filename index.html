@@ -171,6 +171,7 @@ select.in { padding-right: 8px; }
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .plate.reading { background: #1C8C8C; color: #FFFFFF; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 8px rgba(40, 200, 200, 0.55); }
+.emptyshelf { padding: 22px 16px; text-align: center; font-size: 13px; color: var(--rail-fg); opacity: .8; }
 .rail.clickable { cursor: pointer; }
 .rail.clickable:focus-visible { outline: 2px solid var(--brass); outline-offset: -3px; }
 .rail .chev { flex: none; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--rail-fg); transition: transform 0.15s; }
@@ -461,7 +462,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v18';
+  var APP_VERSION = 'v19';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -582,7 +583,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   }
   var store = null;
 
-  var books = [], loaded = false, filter = 'all', query = '';
+  var books = [], emptyShelves = [], loaded = false, filter = 'all', query = '';
   var busy = new Set();
   var opener = null, sheetUrls = [], sheetBusy = false;
 
@@ -1026,14 +1027,15 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       nodes.push(h('div', { class: 'notice', text: storeProblem }));
     } else if (!loaded) {
       nodes.push(h('p', { class: 'hint', text: 'Loading your shelf…' }));
-    } else if (!books.length) {
+    } else if (!books.length && !emptyShelves.length) {
       nodes.push(h('div', { class: 'empty' },
         h('h2', { text: 'Your shelf is empty' }),
         h('p', { text: 'Pick an author, then add their cover images. Titles come from the file names, and you can fix any of them afterwards. Tap a book to see its full cover, tick Kindle and mark it finished.' }),
         h('button', { class: 'btn primary', type: 'button', onclick: function (e) { openAdd(e.currentTarget); } }, 'Add books')));
     } else {
       var list = visible();
-      if (!list.length) {
+      var showEmpty = filter === 'all' && !norm(query) && emptyShelves.length > 0;
+      if (!list.length && !showEmpty) {
         nodes.push(h('div', { class: 'empty' },
           h('h2', { text: 'Nothing matches' }),
           h('p', { text: 'No books fit the current search and filter.' }),
@@ -1044,6 +1046,11 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           var k = norm(b.author);
           if (!groups.has(k)) groups.set(k, { name: authorName(b), items: [] });
           groups.get(k).items.push(b);
+        });
+        if (showEmpty) emptyShelves.forEach(function (e) {
+          var k = norm(e.author);
+          if (!groups.has(k)) groups.set(k, { name: authorName(e), items: [], shelfIds: [] });
+          if (groups.get(k).shelfIds) groups.get(k).shelfIds.push(e.id); else groups.get(k).shelfIds = [e.id];
         });
         var cmp = function (a, b) { return String(a).localeCompare(String(b), undefined, { sensitivity: 'base', numeric: true }); };
         var sortedGroups = Array.from(groups.values()).sort(function (a, b) { return cmp(authorKey(a.name), authorKey(b.name)); });
@@ -1077,6 +1084,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Remove ' + g.name + ' shelf', 'aria-label': 'Remove the ' + g.name + ' shelf', onclick: function (e) { e.stopPropagation(); openRemoveShelf(e.currentTarget, g); }, onkeydown: function (e) { e.stopPropagation(); } }, '✕'))];
           if (isCol) {
             /* collapsed: the author bar only */
+          } else if (!g.items.length) {
+            kids.push(h('div', { class: 'emptyshelf', text: 'No books yet. Tap + Add to put the first one here.' }));
           } else if (bySeries.size === 0) {
             kids.push(h('div', { class: rowCls }, shelfItems(g.items)));
           } else {
@@ -1120,7 +1129,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   /* ---------- sheet plumbing ---------- */
   function uniqueAuthors() {
     var seen = new Map();
-    books.forEach(function (b) { var k = norm(b.author); if (k && !seen.has(k)) seen.set(k, authorName(b)); });
+    books.concat(emptyShelves).forEach(function (b) { var k = norm(b.author); if (k && !seen.has(k)) seen.set(k, authorName(b)); });
     return Array.from(seen.values()).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
   }
   function uniqueSeries() {
@@ -1165,7 +1174,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var dl = h('datalist', { id: 'authorList' }, uniqueAuthors().map(function (a) { return h('option', { value: a }); }));
     var fileIn = h('input', { id: 'fFiles', class: 'sr', type: 'file', accept: 'image/*', multiple: true });
     var list = h('div', { class: 'staged' });
-    var hint = h('p', { class: 'hint', text: assets ? 'Choose the cover images for this author. Each image becomes one book.' : 'Cover uploads are not available in this view. You can still add titles.' });
+    var hint = h('p', { class: 'hint', text: assets ? 'Choose cover images for this author (each becomes one book), or just tap Add shelf only to create an empty shelf.' : 'Cover uploads are not available in this view. You can still add titles.' });
     var saveBtn = h('button', { class: 'btn primary', type: 'submit' }, 'Add books');
     var cancelBtn = h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Cancel');
 
@@ -1186,8 +1195,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         } }, '×');
         return h('div', { class: 'srow' }, thumb, h('div', { class: 'scol' }, t, h('label', { class: 'chk' }, k, 'In Kindle')), rm);
       }));
-      saveBtn.textContent = staged.length ? 'Add ' + plural(staged.length, 'book') : 'Add books';
-      saveBtn.disabled = saving || !staged.length;
+      saveBtn.textContent = staged.length ? 'Add ' + plural(staged.length, 'book') : 'Add shelf only';
+      saveBtn.disabled = saving;
       hint.hidden = staged.length > 0;
     }
 
@@ -1219,7 +1228,14 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       if (saving) return;
       var author = authorIn.value.trim();
       if (!author) { setMsg('Enter the author first.', true); authorIn.focus(); return; }
-      if (!staged.length) { setMsg('Choose at least one cover or add a book without one.', true); return; }
+      if (!staged.length) {
+        var k0 = norm(author);
+        if (books.concat(emptyShelves).some(function (x) { return norm(x.author) === k0; })) { setMsg('That author already has a shelf.', true); return; }
+        saving = true; sheetBusy = true; saveBtn.disabled = true;
+        try { await db.collection('books').doc().set({ shelfOnly: true, author: author, createdAt: Date.now() }); sheetBusy = false; saving = false; closeSheet(); }
+        catch (err) { saving = false; sheetBusy = false; saveBtn.disabled = false; setMsg(errText(err), true); }
+        return;
+      }
       var bad = staged.filter(function (s) { return !s.file && !s.title.trim(); });
       if (bad.length) { setMsg('Books without a cover need a title.', true); return; }
       saving = true; sheetBusy = true; renderStaged();
@@ -1450,6 +1466,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       if (busyNow) return;
       busyNow = true; sheetBusy = true; go.disabled = true; msg.textContent = 'Removing…'; msg.className = 'msg';
       try {
+        for (var j = 0; j < emptyShelves.length; j++) { if (norm(emptyShelves[j].author) === norm(g.name)) await db.doc('books/' + emptyShelves[j].id).delete(); }
         for (var i = 0; i < g.items.length; i++) {
           var b = g.items[i];
           await db.doc('books/' + b.id).delete();
@@ -1462,7 +1479,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     } }, 'Remove shelf');
     showSheet([
       h('h2', { id: 'sheetTitle', text: 'Remove this shelf?' }),
-      h('p', { text: 'This removes the ' + g.name + ' shelf and its ' + plural(g.items.length, 'book') + ', including the covers. It cannot be undone. If you might want them back, save a backup first with the Backup chip.' }),
+      h('p', { text: 'This removes the ' + g.name + ' shelf' + (g.items.length ? ' and its ' + plural(g.items.length, 'book') + ', including the covers.' : '.') + ' It cannot be undone. If you might want them back, save a backup first with the Backup chip.' }),
       msg,
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Keep it'), go)
     ], from, null);
@@ -1537,7 +1554,9 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       return;
     }
     db.collection('books').onSnapshot(function (snap) {
-      books = snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
+      var all = snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
+      books = all.filter(function (o) { return !o.shelfOnly; });
+      emptyShelves = all.filter(function (o) { return o.shelfOnly; });
       loaded = true; storeProblem = ''; render();
     }, function (err) {
       loaded = true;
