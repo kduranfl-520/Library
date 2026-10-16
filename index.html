@@ -1,0 +1,1390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Library">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5a3d28">
+<title>Kelly’s Library</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Hanken+Grotesk:wght@400;500;600&family=Oswald:wght@500;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Cinzel:wght@700&family=Rokkitt:wght@800&display=swap">
+<style>
+/* Layout: page header with counts, search and filters; then one section per author, each a grid of covers with a Kindle pill; add and edit share one bottom sheet. */
+[hidden] { display: none !important; }
+:root {
+  --bg: #F1F3F5;
+  --surface: #FFFFFF;
+  --surface-2: #E4E8ED;
+  --fg: #171C22;
+  --muted: #5A6571;
+  --line: #D3D9E0;
+  --accent: #2F4BB3;
+  --accent-fg: #FFFFFF;
+  --kindle: #17794F;
+  --kindle-fg: #FFFFFF;
+  --warn: #7A4E00;
+  --warn-bg: #F8E6BE;
+  --danger: #B3261E;
+  --scrim: rgba(12, 16, 21, 0.55);
+  --pill-off-bg: rgba(18, 22, 28, 0.72);
+  --pill-off-fg: #FFFFFF;
+  --wood-frame: #B58A57;
+  --wood-back: #E2C79F;
+  --wood-plank: #B07C47;
+  --wood-plank-hi: #D6A872;
+  --brass: #3B2A1A;
+  --brass-fg: #F4E6CC;
+  --rail-fg: #2B1D10;
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1318;
+    --surface: #181D24;
+    --surface-2: #232A33;
+    --fg: #E9ECF0;
+    --muted: #96A1AE;
+    --line: #2A323C;
+    --accent: #8EA2FF;
+    --accent-fg: #0F1318;
+    --kindle: #4CC48C;
+    --kindle-fg: #08140E;
+    --warn: #F0C46A;
+    --warn-bg: #3A2D10;
+    --danger: #FF8A80;
+    --scrim: rgba(0, 0, 0, 0.65);
+    --pill-off-bg: rgba(10, 13, 17, 0.78);
+    --pill-off-fg: #F1F3F5;
+    --wood-frame: #5A3B26;
+    --wood-back: #3A281C;
+    --wood-plank: #7A5638;
+    --wood-plank-hi: #95704C;
+    --brass: #D9B45E;
+    --brass-fg: #2A1F08;
+    --rail-fg: #EBDCC4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1318;
+  --surface: #181D24;
+  --surface-2: #232A33;
+  --fg: #E9ECF0;
+  --muted: #96A1AE;
+  --line: #2A323C;
+  --accent: #8EA2FF;
+  --accent-fg: #0F1318;
+  --kindle: #4CC48C;
+  --kindle-fg: #08140E;
+  --warn: #F0C46A;
+  --warn-bg: #3A2D10;
+  --danger: #FF8A80;
+  --scrim: rgba(0, 0, 0, 0.65);
+  --pill-off-bg: rgba(10, 13, 17, 0.78);
+  --pill-off-fg: #F1F3F5;
+  --wood-frame: #5A3B26;
+  --wood-back: #3A281C;
+  --wood-plank: #7A5638;
+  --wood-plank-hi: #95704C;
+  --brass: #D9B45E;
+  --brass-fg: #2A1F08;
+  --rail-fg: #EBDCC4;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-block: 20px 110px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
+
+/* Header */
+.top h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; }
+.stats { margin: 6px 0 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.tools { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+.in {
+  width: 100%; min-height: 44px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  font: inherit; font-size: 16px;
+}
+select.in { padding-right: 8px; }
+.search { flex: 1 1 240px; min-width: 0; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.chip .n { opacity: 0.75; margin-left: 4px; }
+
+/* Shelf: each author is a bookcase with a brass plate; books stand as spines on planks. */
+#shelf { margin-top: 22px; display: grid; gap: 26px; }
+.case {
+  background-color: var(--wood-back);
+  background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.10) 0 2px, transparent 2px 15px);
+  border-inline: 8px solid var(--wood-frame);
+  border-bottom: 8px solid var(--wood-frame);
+  border-radius: 8px 8px 3px 3px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22), inset 0 10px 16px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.case.shut { border-bottom: 0; border-radius: 8px; }
+.rail {
+  margin-inline: -8px; padding: 0 14px; height: 32px; box-sizing: border-box; background: var(--wood-frame);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35); position: relative; z-index: 1;
+}
+.plate .pl { white-space: nowrap; }
+.plate { overflow: hidden; flex: 0 1 auto;
+  margin: 0; min-width: 0; padding: 3px 10px 0; height: 24px; box-sizing: border-box; display: inline-flex; align-items: center; line-height: 1; border-radius: 4px; background: var(--brass); color: var(--brass-fg);
+  font-size: 15px; font-weight: 700; overflow-wrap: anywhere;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.rail.clickable { cursor: pointer; }
+.rail.clickable:focus-visible { outline: 2px solid var(--brass); outline-offset: -3px; }
+.rail .chev { flex: none; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--rail-fg); transition: transform 0.15s; }
+.rail.closed .chev { transform: rotate(-90deg); }
+.addbtn { flex: none; height: 22px; padding: 0 10px; border: 1px solid var(--brass); border-radius: 11px; background: transparent; color: var(--rail-fg); font: inherit; font-size: 12px; font-weight: 600; line-height: 1; cursor: pointer; }
+.addbtn:hover { background: rgba(255, 255, 255, 0.12); }
+.rail.clickable .plate { margin-right: auto; }
+.subrail {
+  margin-inline: -8px; padding: 5px 20px 5px 28px; background: var(--wood-frame); color: var(--rail-fg);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  border-top: 1px solid rgba(0, 0, 0, 0.35); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); position: relative; z-index: 1;
+}
+.subrail .sname { margin-right: auto; min-width: 0; overflow-wrap: anywhere; }
+.subrail .sname::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--brass); vertical-align: 0; }
+.subrail .scount { font-size: 12px; font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .rail .count .ck { display: none; } }
+.rail .count { color: var(--rail-fg); line-height: 1; padding-top: 2px; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Every wrapped line is exactly 252px tall, so one repeating gradient draws a plank under each row. */
+.shelfrow {
+  display: flex; flex-wrap: wrap; align-items: flex-end; padding: 0 10px;
+  background: repeating-linear-gradient(to bottom, transparent 0 236px, var(--wood-plank-hi) 236px 239px, var(--wood-plank) 239px 250px, rgba(0, 0, 0, 0.5) 250px 252px);
+}
+.slot { position: relative; flex: 0 0 auto; height: 252px; padding-bottom: 16px; display: flex; align-items: flex-end; }
+.spine, .flat {
+  --shade: linear-gradient(90deg, rgba(0, 0, 0, 0.4) 0, rgba(255, 255, 255, 0.2) 15%, rgba(255, 255, 255, 0) 40%, rgba(0, 0, 0, 0.1) 72%, rgba(0, 0, 0, 0.45) 100%),
+           linear-gradient(to bottom, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 14%, rgba(255, 255, 255, 0) 86%, rgba(0, 0, 0, 0.25));
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --acc: #D9BC6A; --ink: #F4EBD6; --bgc: #3A4658;
+  position: relative; margin: 0 1px; border: 0; overflow: hidden; color: var(--ink);
+  background-color: #3A4658; background-image: var(--shade), var(--noise);
+  box-shadow: inset 2px 0 3px rgba(255, 255, 255, 0.16), inset -3px 0 4px rgba(0, 0, 0, 0.35), 1px 2px 5px rgba(0, 0, 0, 0.55);
+}
+.spine {
+  width: var(--w, 50px); height: var(--h, 190px); padding: 36px 4px 30px; border-radius: 3px 3px 1px 1px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.spine::before, .spine::after { content: ""; position: absolute; left: 0; right: 0; }
+.spine::before { top: 6px; }
+.spine::after { bottom: 24px; }
+.spine.d0::before, .spine.d0::after { height: 4px; background: var(--acc); }
+.spine.d1::before, .spine.d1::after { height: 3px; border-block: 1px solid var(--acc); }
+.spine.d2::before, .spine.d2::after { height: 3px; border-block: 1px solid var(--ink); opacity: 0.55; }
+.spine.reading { border-top: 4px solid var(--accent); }
+
+.sp-t {
+  flex: 1 1 auto; min-height: 0; max-width: 100%; writing-mode: vertical-rl; text-align: center; white-space: normal; overflow: hidden; overflow-wrap: anywhere;
+  font-size: var(--fs, 14px); line-height: 1.1; color: var(--ink);
+}
+.spine:not(.lightbg) .sp-t, .flat:not(.lightbg) .sp-t { text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45); }
+.sp-a {
+  flex: 0 1 auto; min-height: 0; max-height: 38%; margin-top: 6px; writing-mode: vertical-rl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 600 9px/1 var(--f-body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); opacity: 0.85;
+}
+.sp-g { flex: none; width: 10px; height: 10px; margin-top: 7px; border: 1.5px solid var(--acc); }
+.sp-g.g0 { border-radius: 50%; }
+.sp-g.g2 { transform: rotate(45deg) scale(0.8); }
+.f0 .sp-t { font-family: "Oswald", var(--f-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.f1 .sp-t { font-family: "Playfair Display", Georgia, serif; font-weight: 700; letter-spacing: 0.02em; }
+.f2 .sp-t { font-family: "Cinzel", Georgia, serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.f3 .sp-t { font-family: "Rokkitt", Georgia, serif; font-weight: 800; letter-spacing: 0.03em; }
+.f4 .sp-t { font-family: "Oswald", var(--f-display); font-weight: 500; letter-spacing: 0.02em; }
+.f5 .sp-t { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-weight: 700; }
+.spine.missing .sp-t, .flat.missing .sp-t { font-style: italic; opacity: 0.85; }
+.spine.d2 .sp-t {
+  flex: 0 1 auto; margin-block: auto; padding: 6px 3px; background: var(--ink); color: var(--bgc); text-shadow: none;
+  border-radius: 1px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+/* A spine photo replaces the generated look. */
+.spine.photo { padding: 0; background-image: none; background-color: #111; }
+.spine.photo::before { display: none; }
+.spine.photo::after {
+  top: 0; bottom: 0; height: auto; border: 0; opacity: 1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0, rgba(255, 255, 255, 0.14) 14%, rgba(255, 255, 255, 0) 38%, rgba(0, 0, 0, 0.4) 100%);
+}
+.sp-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; display: block; }
+.sp-t { font-family: var(--f-display); font-weight: 700; }
+.sp-ti { display: block; }
+/* Cover art as the spine: the left slice of the cover, with the title on a dark label so it stays readable. */
+.spine.art .sp-img {
+  inset: auto; left: 0; top: 0; width: calc(var(--w) / 0.10); max-width: none; height: 100%; object-fit: fill;
+  filter: blur(4px) saturate(1.15); transform: scale(1.12); transform-origin: left center;
+}
+/* The title runs the full height of the spine. */
+.spine.art .sp-t {
+  position: absolute; z-index: 1; top: 0; bottom: 0; left: 50%; width: calc(var(--w) * 0.8); max-width: none; margin: 0 0 0 calc(var(--w) * -0.4);
+  display: grid; place-content: center; padding: 34px 3px; background: rgba(0, 0, 0, 0.5); color: #FFFFFF; text-shadow: none; border-radius: 0;
+}
+.flat .sp-img { object-fit: cover; object-position: center; filter: blur(8px) saturate(1.15); transform: scale(1.25); }
+.flat.art { padding: 0 26px; }
+.flat.art::before { display: none; }
+.flat.art::after {
+  content: ""; position: absolute; inset: 0; width: auto; border: 0; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.35));
+}
+.flat.art .sp-t { position: absolute; z-index: 1; inset: 0; margin: 0; padding: 0 28px; display: grid; place-content: center; text-align: center; background: rgba(0, 0, 0, 0.45); color: #FFFFFF; text-shadow: none; border-radius: 0; }
+
+.ktop {
+  position: absolute; z-index: 3; top: 2px; left: 50%; width: 34px; height: 28px; margin-left: -17px; padding: 0; border: 0;
+  background: none; display: grid; place-items: center; cursor: pointer;
+}
+.kd { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rail-fg); background: transparent; opacity: 0.5; }
+.ktop[aria-pressed="true"] .kd { background: var(--kindle); border-color: #FFFFFF; opacity: 1; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+/* A black stripe at the foot of each book keeps the finished marker visible. */
+.base { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; height: 24px; background: #0E0E10; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.fin { position: absolute; z-index: 2; bottom: 8px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #E3B341; }
+.fin::after { content: ""; position: absolute; left: 4px; top: 2px; width: 3px; height: 6px; border: solid #3A2A0E; border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
+
+/* Books lying flat in a stack */
+.pile { display: flex; flex-direction: column-reverse; align-items: center; margin: 0 8px 0 26px; }
+.flat {
+  --shade: linear-gradient(to bottom, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.35));
+  width: var(--w, 170px); height: var(--h, 32px); margin: 1px 0 0; padding: 0 30px; border-radius: 2px;
+  display: flex; align-items: center; justify-content: center; transform: translateX(var(--dx, 0px));
+}
+.flat .sp-t { writing-mode: horizontal-tb; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flat::before, .flat::after { content: ""; position: absolute; top: 0; bottom: 0; }
+.flat::before { left: 22px; }
+.flat::after { right: 22px; }
+.flat.d0::before, .flat.d0::after { width: 4px; background: var(--acc); }
+.flat.d1::before, .flat.d1::after { width: 3px; border-inline: 1px solid var(--acc); }
+.flat.d2::before, .flat.d2::after { width: 3px; border-inline: 1px solid var(--ink); opacity: 0.55; }
+.flat.d2 .sp-t { flex: 0 1 auto; padding: 2px 10px; background: var(--ink); color: var(--bgc); text-shadow: none; border-radius: 1px; }
+.flat .base { top: 0; bottom: 0; left: auto; right: 0; width: 26px; height: auto; }
+.fwrap { position: relative; display: flex; align-items: center; }
+.ktop.side { top: 50%; left: -22px; margin: -14px 0 0; }
+.flat .fin { top: 50%; bottom: auto; left: auto; right: 8px; margin: -6px 0 0; }
+
+.ph {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  padding: 10px; text-align: center; background: var(--surface-2); border: 1px dashed var(--line);
+  color: var(--muted); font-family: var(--f-display); font-weight: 500; font-size: 13px; overflow: hidden; overflow-wrap: anywhere;
+}
+.ph.tinted { border: 0; color: #FFFFFF; font-weight: 700; }
+
+/* Full cover view */
+.bigcover {
+  display: block; margin: 0 auto; max-width: 100%; max-height: 56vh; width: auto; height: auto;
+  border-radius: 3px 5px 5px 3px; background: var(--surface-2); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+}
+.bigph { width: min(100%, 220px); aspect-ratio: 2 / 3; margin: 0 auto; border-radius: 3px 5px 5px 3px; overflow: hidden; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38); }
+.bigph .ph { font-size: 20px; padding: 16px; }
+.vmeta { text-align: center; display: grid; gap: 2px; }
+.vmeta h2 { font-size: 22px; font-weight: 700; overflow-wrap: anywhere; }
+.by { margin: 0; color: var(--muted); font-size: 14px; }
+.toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.btn[aria-pressed="true"].kbtn { background: var(--kindle); border-color: var(--kindle); color: var(--kindle-fg); }
+.btn[aria-pressed="true"].fbtn { background: #E3B341; border-color: #E3B341; color: #3A2A0E; }
+.btn[aria-pressed="true"].rbtn { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+
+/* Empty and notice states */
+.empty {
+  background-color: var(--wood-back);
+  background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.10) 0 2px, transparent 2px 15px);
+  border-inline: 8px solid var(--wood-frame); border-bottom: 16px solid var(--wood-plank); border-top: 8px solid var(--wood-frame);
+  border-radius: 8px 8px 3px 3px; padding: 36px 20px 30px; text-align: center; display: grid; gap: 10px; justify-items: center;
+  color: var(--rail-fg); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22), inset 0 10px 16px rgba(0, 0, 0, 0.35);
+}
+.empty h2 { font-size: 20px; font-weight: 600; color: var(--rail-fg); }
+.empty p { margin: 0; max-width: 46ch; color: var(--rail-fg); }
+.notice { background: var(--warn-bg); color: var(--warn); padding: 12px 14px; border-radius: 10px; font-size: 14px; }
+
+/* Buttons */
+.btn {
+  min-height: 42px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn.warn { color: var(--danger); border-color: var(--danger); }
+.btn.solid-danger { background: var(--danger); border-color: var(--danger); color: var(--bg); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.fab {
+  position: fixed; z-index: 5; min-height: 48px; padding: 0 20px; border-radius: 999px; border: 0;
+  right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--accent); color: var(--accent-fg); font-weight: 600; font-size: 15px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+/* Covers view: standing books drawn as boxes, cover forward with the spine edge showing */
+.shelfrow.covers {
+  background: repeating-linear-gradient(to bottom, transparent 0 182px, var(--wood-plank-hi) 182px 185px, var(--wood-plank) 185px 196px, rgba(0, 0, 0, 0.5) 196px 198px);
+}
+.shelfrow.covers .slot { height: 198px; }
+.slot.cv::after {
+  content: ""; position: absolute; left: 10px; right: 4px; bottom: 11px; height: 10px; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
+}
+.bk-btn { position: relative; flex: none; width: var(--bw); height: var(--bh); margin: 0 -34px 0 20px; padding: 0; border: 0; background: none; cursor: pointer; }
+.book3d { position: absolute; inset: 0; transform-style: preserve-3d; transform: perspective(800px) rotateY(56deg); transform-origin: 50% 100%; }
+.bk-front {
+  position: absolute; inset: 0; transform: translateZ(calc(var(--bt) / 2)); backface-visibility: hidden;
+  border-radius: 1px 3px 3px 1px; overflow: hidden; background: var(--surface-2);
+}
+.bk-front img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bk-front .ph { font-size: 13px; }
+.bk-front::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0, rgba(255, 255, 255, 0.2) 3%, rgba(0, 0, 0, 0) 10%, rgba(0, 0, 0, 0) 82%, rgba(0, 0, 0, 0.14));
+}
+.bk-spine {
+  --fs: 11px; --ink: #F4EBD6;
+  position: absolute; top: 0; left: calc(var(--bt) / -2); width: var(--bt); height: 100%; overflow: hidden;
+  transform: rotateY(-90deg); backface-visibility: hidden; color: var(--ink);
+  background-color: #3A4658;
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35), rgba(255, 255, 255, 0.14) 30%, rgba(0, 0, 0, 0.1) 70%, rgba(0, 0, 0, 0.4));
+}
+.bk-btn.reading .bk-spine { border-top: 4px solid var(--accent); }
+.bk-spine .sp-img {
+  inset: auto; left: 0; top: 0; width: calc(var(--bt) / 0.10); max-width: none; height: 100%; object-fit: fill;
+  filter: blur(3px) saturate(1.15); transform: scale(1.12); transform-origin: left center;
+}
+.bk-spine.photo .sp-img { inset: 0; width: 100%; filter: none; transform: none; }
+.bk-spine .sp-t {
+  position: absolute; z-index: 1; inset: 0; display: grid; place-content: center; padding: 8px 2px 26px; text-shadow: none;
+}
+.bk-spine.art .sp-t { background: rgba(0, 0, 0, 0.45); color: #FFFFFF; }
+.bk-spine .base { height: 22px; }
+.bk-spine .fin { bottom: 5px; }
+
+/* Sheet */
+.scrim {
+  position: fixed; inset: 0; z-index: 20; background: var(--scrim);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+}
+@media (min-width: 640px) { .scrim { align-items: center; padding: 24px; } }
+.sheet {
+  width: 100%; max-width: 540px; max-height: 92%; overflow-y: auto; background: var(--surface); color: var(--fg);
+  border-radius: 16px 16px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 14px; align-content: start;
+}
+@media (min-width: 640px) { .sheet { border-radius: 16px; padding: 22px; } }
+.sheet h2 { font-size: 22px; font-weight: 700; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field > span, .lbl { font-size: 13px; font-weight: 600; color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.hint { margin: 0; color: var(--muted); font-size: 14px; }
+.msg { margin: 0; font-size: 14px; min-height: 0; }
+.msg.err { color: var(--danger); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.staged { display: grid; gap: 10px; }
+.srow {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) 36px; gap: 10px; align-items: start;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+}
+.thumb { width: 44px; aspect-ratio: 2 / 3; border-radius: 4px; overflow: hidden; background: var(--surface-2); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .ph { padding: 2px; font-size: 9px; border-radius: 4px; }
+.scol { display: grid; gap: 8px; min-width: 0; }
+.chk { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; }
+.chk input { width: 20px; height: 20px; accent-color: var(--kindle); }
+.x { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-size: 18px; line-height: 1; color: var(--muted); }
+.editcover { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: start; }
+.editcover .thumb { width: 96px; border-radius: 6px; }
+.editcover .thumb .ph { font-size: 12px; padding: 6px; }
+.danger { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px; }
+.danger p { margin: 0; font-size: 14px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .chip, .kpill, .btn { transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Kelly’s Library</h1>
+    <p class="stats" id="stats">Loading your shelf</p>
+    <div class="tools">
+      <input id="q" class="in search" type="search" placeholder="Search title or author" aria-label="Search title or author" autocomplete="off">
+      <div class="seg" id="seg" role="group" aria-label="Filter books"></div>
+      <div class="seg" id="viewSeg" role="group" aria-label="Shelf view"></div>
+    </div>
+  </header>
+  <main id="shelf" aria-live="polite"></main>
+</div>
+<button class="fab" id="fab" type="button">+ Add books</button>
+<div class="scrim" id="scrim" hidden><form class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate></form></div>
+
+<script>
+(function () {
+  var db = null, assets = null, storeProblem = '';
+  /* ---------- on-device storage (IndexedDB). Nothing leaves this browser. ---------- */
+  var urlCache = new Map();
+  function localStore() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) { reject(new Error('no indexedDB')); return; }
+      var open = indexedDB.open('kellys-library', 1);
+      open.onupgradeneeded = function () {
+        var d = open.result;
+        d.createObjectStore('books', { keyPath: 'id' });
+        d.createObjectStore('blobs');
+      };
+      open.onerror = function () { reject(open.error || new Error('open failed')); };
+      open.onsuccess = function () {
+        var idb = open.result;
+        var mem = new Map(), listeners = [];
+        function run(store, mode, fn) {
+          return new Promise(function (res, rej) {
+            var t = idb.transaction(store, mode), out;
+            try { out = fn(t.objectStore(store)); } catch (e) { rej(e); return; }
+            t.oncomplete = function () { res(out && out.result); };
+            t.onerror = function () { rej(t.error); };
+            t.onabort = function () { rej(t.error || new Error('aborted')); };
+          });
+        }
+        function snap() {
+          return { docs: Array.from(mem.values()).map(function (d) { return { id: d.id, data: function () { return d; } }; }) };
+        }
+        function notify() { listeners.slice().forEach(function (cb) { try { cb(snap()); } catch (e) {} }); }
+        function newId() { return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+        function ref(id) {
+          return {
+            id: id,
+            set: async function (obj) { var d = Object.assign({}, obj, { id: id }); await run('books', 'readwrite', function (st) { return st.put(d); }); mem.set(id, d); notify(); },
+            update: async function (patch) {
+              var cur = mem.get(id); if (!cur) throw new Error('Book not found');
+              var d = Object.assign({}, cur, patch, { id: id });
+              await run('books', 'readwrite', function (st) { return st.put(d); }); mem.set(id, d); notify();
+            },
+            delete: async function () { await run('books', 'readwrite', function (st) { return st.delete(id); }); mem.delete(id); notify(); }
+          };
+        }
+        var db = {
+          collection: function () {
+            return {
+              doc: function () { return ref(newId()); },
+              onSnapshot: function (cb) { listeners.push(cb); setTimeout(function () { cb(snap()); }, 0); return function () { listeners = listeners.filter(function (x) { return x !== cb; }); }; }
+            };
+          },
+          doc: function (path) { return ref(String(path).split('/').pop()); }
+        };
+        var assets = {
+          upload: async function (blob) {
+            var id = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+            await run('blobs', 'readwrite', function (st) { return st.put(blob, id); });
+            urlCache.set(id, URL.createObjectURL(blob));
+            return { id: id };
+          },
+          delete: async function (id) {
+            await run('blobs', 'readwrite', function (st) { return st.delete(id); });
+            var u = urlCache.get(id); if (u) { try { URL.revokeObjectURL(u); } catch (e) {} urlCache.delete(id); }
+          }
+        };
+        function toDataUrl(blob) { return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.onerror = function () { rej(fr.error); }; fr.readAsDataURL(blob); }); }
+        async function exportAll() {
+          var blobs = {};
+          await new Promise(function (res, rej) {
+            var t = idb.transaction('blobs', 'readonly'), st = t.objectStore('blobs'), cur = st.openCursor();
+            cur.onsuccess = function () { var c = cur.result; if (c) { blobs[c.key] = c.value; c.continue(); } };
+            t.oncomplete = res; t.onerror = function () { rej(t.error); };
+          });
+          var out = { app: 'kellys-library', version: 1, books: Array.from(mem.values()), blobs: {} };
+          var ids = Object.keys(blobs);
+          for (var i = 0; i < ids.length; i++) out.blobs[ids[i]] = await toDataUrl(blobs[ids[i]]);
+          return out;
+        }
+        async function importAll(data) {
+          if (!data || data.app !== 'kellys-library' || !Array.isArray(data.books)) throw new Error('This is not a Kelly’s Library backup file.');
+          var bl = data.blobs || {}, ids = Object.keys(bl);
+          for (var i = 0; i < ids.length; i++) {
+            var blob = await (await fetch(bl[ids[i]])).blob();
+            await run('blobs', 'readwrite', function (st) { return st.put(blob, ids[i]); });
+            urlCache.set(ids[i], URL.createObjectURL(blob));
+          }
+          for (var j = 0; j < data.books.length; j++) {
+            var d = data.books[j]; if (!d || !d.id) continue;
+            await run('books', 'readwrite', function (st) { return st.put(d); }); mem.set(d.id, d);
+          }
+          notify();
+          return data.books.length;
+        }
+        /* load everything */
+        var t = idb.transaction(['books', 'blobs'], 'readonly');
+        var rb = t.objectStore('books').getAll();
+        var cur = t.objectStore('blobs').openCursor();
+        cur.onsuccess = function () { var c = cur.result; if (c) { urlCache.set(c.key, URL.createObjectURL(c.value)); c.continue(); } };
+        t.oncomplete = function () {
+          (rb.result || []).forEach(function (d) { mem.set(d.id, d); });
+          try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+          resolve({ db: db, assets: assets, exportAll: exportAll, importAll: importAll });
+        };
+        t.onerror = function () { reject(t.error); };
+      };
+    });
+  }
+  var store = null;
+
+  var books = [], loaded = false, filter = 'all', query = '';
+  var busy = new Set();
+  var opener = null, sheetUrls = [], sheetBusy = false;
+
+  var shelf = document.getElementById('shelf');
+  var statsEl = document.getElementById('stats');
+  var segEl = document.getElementById('seg');
+  var viewEl = document.getElementById('viewSeg');
+  var view = 'covers';
+  try { var sv = localStorage.getItem('shelfView'); if (sv === 'spines' || sv === 'covers') view = sv; } catch (e) {}
+  var collapsed = new Set();
+  try { JSON.parse(localStorage.getItem('shelfCollapsed') || '[]').forEach(function (k) { collapsed.add(k); }); } catch (e) {}
+  function saveCollapsed() { try { localStorage.setItem('shelfCollapsed', JSON.stringify(Array.from(collapsed))); } catch (e) {} }
+  var sortBy = 'last';
+  try { var so = localStorage.getItem('shelfSort'); if (so === 'first' || so === 'last') sortBy = so; } catch (e) {}
+  var qEl = document.getElementById('q');
+  var scrim = document.getElementById('scrim');
+  var sheet = document.getElementById('sheet');
+  var fab = document.getElementById('fab');
+
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      var v = attrs[k];
+      if (v == null || v === false) return;
+      if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = v;
+      else if (k.indexOf('on') === 0) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? '' : v);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var kids = [].concat(arguments[i]);
+      for (var j = 0; j < kids.length; j++) {
+        var c = kids[j];
+        if (c == null || c === false) continue;
+        el.append(c.nodeType ? c : document.createTextNode(c));
+      }
+    }
+    return el;
+  }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
+  function norm(s) { return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase(); }
+  function authorName(b) { return String(b.author || '').trim() || 'Unknown author'; }
+  function coverSrc(id) { return urlCache.get(id) || ''; }
+
+  function guessTitle(name) {
+    var base = name.replace(/\.[^.]+$/, '');
+    if (/^(img|dsc|dscn|pxl|image|photo|screenshot|scan|wa|mvimg)[\s_-]*\d/i.test(base) || /^[\d\s_-]+$/.test(base)) return '';
+    return base.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function errText(e) {
+    var c = e && e.code;
+    if (c === 'quota_or_state') return 'Storage for this page is full.';
+    if (c === 'too_large') return 'That image is too large.';
+    if (c === 'unsupported_type') return 'That file type is not supported. Use a JPG, PNG or WebP image.';
+    if (c === 'rate_limited') return 'Too many uploads at once. Wait a moment and try again.';
+    if (c === 'quota_exceeded') return 'This page has reached its record limit.';
+    if (e && e.friendly) return e.friendly;
+    return 'Could not save. Check your connection and try again.';
+  }
+
+  function loadImg(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () { URL.revokeObjectURL(url); res(im); };
+      im.onerror = function () {
+        URL.revokeObjectURL(url);
+        rej({ friendly: 'Could not read that image. HEIC photos may need to be saved as JPG first.' });
+      };
+      im.src = url;
+    });
+  }
+  async function shrink(file) {
+    var src;
+    try { src = await createImageBitmap(file); } catch (e) { src = await loadImg(file); }
+    var w = src.width || src.naturalWidth, ht = src.height || src.naturalHeight;
+    var s = Math.min(1, 900 / Math.max(w, ht));
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(ht * s));
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    var look = sampleColors(c);
+    return new Promise(function (res, rej) {
+      c.toBlob(function (b) {
+        b ? res({ blob: b, color: look.color, accent: look.accent, w: c.width, h: c.height }) : rej({ friendly: 'Could not process that image.' });
+      }, 'image/jpeg', 0.86);
+    });
+  }
+  function rgb2hsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, hh = 0, ss = 0;
+    if (mx !== mn) {
+      var dd = mx - mn;
+      ss = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+      hh = mx === r ? (g - b) / dd + (g < b ? 6 : 0) : mx === g ? (b - r) / dd + 2 : (r - g) / dd + 4;
+      hh *= 60;
+    }
+    return [hh, ss, l];
+  }
+  function clamp(x, lo, hi) { return Math.min(hi, Math.max(lo, x)); }
+  function fmtHsl(hh, ss, l) { return 'hsl(' + Math.round(hh) + ' ' + Math.round(ss * 100) + '% ' + Math.round(l * 100) + '%)'; }
+  function sampleColors(c) {
+    try {
+      var sc = document.createElement('canvas'); sc.width = 12; sc.height = 12;
+      var sx = sc.getContext('2d'); sx.drawImage(c, 0, 0, 12, 12);
+      var d = sx.getImageData(0, 0, 12, 12).data, r = 0, g = 0, bl = 0, m = d.length / 4, best = null, top = -1;
+      for (var i = 0; i < d.length; i += 4) {
+        r += d[i]; g += d[i + 1]; bl += d[i + 2];
+        var px = rgb2hsl(d[i], d[i + 1], d[i + 2]);
+        var score = px[1] * (1 - Math.abs(px[2] * 2 - 1));
+        if (score > top) { top = score; best = px; }
+      }
+      var base = rgb2hsl(r / m, g / m, bl / m);
+      var bs = clamp(base[1], 0.15, 0.7), bl2 = clamp(base[2], 0.16, 0.8);
+      var a = best || base;
+      var as = clamp(a[1], 0.45, 0.9), al = clamp(a[2], 0.38, 0.68);
+      if (Math.abs(al - bl2) < 0.2) al = bl2 > 0.5 ? 0.22 : 0.68;
+      return { color: fmtHsl(base[0], bs, bl2), accent: fmtHsl(a[0], as, al) };
+    } catch (e) { return { color: null, accent: null }; }
+  }
+  async function uploadCover(file) {
+    var sh = await shrink(file);
+    var r = await assets.upload(sh.blob, { type: 'image/jpeg' });
+    return { id: r.id, color: sh.color, accent: sh.accent };
+  }
+
+  /* ---------- shelf ---------- */
+  function counts() {
+    var authors = new Set(), kindle = 0, missing = 0, done = 0, unread = 0;
+    books.forEach(function (b) {
+      authors.add(norm(b.author));
+      if (b.inKindle) kindle++;
+      if (b.status === 'read') done++;
+      if (b.status !== 'read') unread++;
+      if (!String(b.title || '').trim()) missing++;
+    });
+    return { total: books.length, authors: authors.size, kindle: kindle, notKindle: books.length - kindle, missing: missing, done: done, unread: unread };
+  }
+
+  function visible() {
+    var q = norm(query);
+    return books.filter(function (b) {
+      if (filter === 'kindle' && !b.inKindle) return false;
+      if (filter === 'not' && b.inKindle) return false;
+      if (filter === 'done' && b.status !== 'read') return false;
+      if (filter === 'unread' && b.status === 'read') return false;
+      if (filter === 'missing' && String(b.title || '').trim()) return false;
+      if (q && (norm(b.title) + ' ' + norm(b.author)).indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+
+  var SPINES = [210, 12, 150, 35, 270, 190, 340, 60];
+  function placeholder(b) {
+    var t = String(b.title || '').trim();
+    var el = h('div', { class: 'ph' + (t ? ' tinted' : '') }, h('span', { text: t || 'No cover' }));
+    if (t) el.style.background = spineColor(b);
+    return el;
+  }
+
+  function toggleKindle(b) {
+    if (!db || busy.has(b.id)) return;
+    busy.add(b.id);
+    db.doc('books/' + b.id).update({ inKindle: !b.inKindle })
+      .catch(function () { statsEl.textContent = 'Could not update that book. Try again.'; })
+      .then(function () { busy.delete(b.id); });
+  }
+
+  function hash(t) { var n = 0; for (var i = 0; i < t.length; i++) n = (n * 31 + t.charCodeAt(i)) >>> 0; return n; }
+  function spineColor(b) {
+    if (typeof b.color === 'string' && /^hsl\(\d{1,3} \d{1,3}% \d{1,2}%\)$/.test(b.color)) return b.color;
+    var t = String(b.title || '').trim() || String(b.author || '');
+    return 'hsl(' + SPINES[hash(t) % SPINES.length] + ' 34% 30%)';
+  }
+  function parseHsl(c) {
+    var m = /^hsl\((\d{1,3}) (\d{1,3})% (\d{1,2})%\)$/.exec(typeof c === 'string' ? c : '');
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+  function lastName(b) { var p = authorName(b).split(' '); return p[p.length - 1]; }
+  function styleBook(el, b) {
+    var base = parseHsl(spineColor(b)) || [210, 34, 30];
+    var acc = parseHsl(b.accent) || [(base[0] + 35) % 360, 55, base[2] > 50 ? 28 : 62];
+    if (Math.abs(acc[2] - base[2]) < 18) acc[2] = base[2] > 50 ? 22 : 68;
+    var bg = 'hsl(' + base[0] + ' ' + base[1] + '% ' + base[2] + '%)';
+    var lum = hslLum(base[0], base[1], base[2]);
+    var light = (lum + 0.05) / 0.06 > 0.87 / (lum + 0.05);
+    el.style.backgroundColor = bg;
+    el.style.setProperty('--bgc', bg);
+    el.style.setProperty('--acc', 'hsl(' + acc[0] + ' ' + acc[1] + '% ' + acc[2] + '%)');
+    el.style.setProperty('--ink', light ? '#1B1712' : '#F4EBD6');
+    if (light) el.classList.add('lightbg');
+    var im = el.querySelector('.sp-img');
+    if (im) im.addEventListener('error', function () { im.remove(); el.classList.remove('photo', 'art'); });
+  }
+  function hslLum(hu, sa, li) {
+    sa /= 100; li /= 100;
+    var a = sa * Math.min(li, 1 - li);
+    function f(n) { var k = (n + hu / 30) % 12; return li - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); }
+    var c = [f(0), f(8), f(4)].map(function (v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  /* The Kindle marker sits on the bookcase above the book. Tapping it toggles Kindle. */
+  function kMarker(b, cls) {
+    var on = !!b.inKindle;
+    return h('button', {
+      class: 'ktop' + (cls ? ' ' + cls : ''), type: 'button', 'aria-pressed': String(on),
+      'aria-label': 'In Kindle: ' + (String(b.title || '').trim() || 'Untitled'), title: on ? 'In Kindle' : 'Not in Kindle',
+      onclick: function () { toggleKindle(b); }
+    }, h('span', { class: 'kd' }));
+  }
+  function stateText(b) {
+    return (b.inKindle ? 'in Kindle' : 'not in Kindle') + (b.status === 'read' ? ', finished' : b.status === 'reading' ? ', reading' : '');
+  }
+  function spine(b) {
+    var title = String(b.title || '').trim();
+    var label = (title || 'Untitled') + ' by ' + authorName(b);
+    var n = hash(title + '|' + authorName(b));
+    var photo = !!b.spineId && typeof b.spineRatio === 'number' && b.spineRatio > 0.05 && b.spineRatio < 1.2;
+    var art = !photo && !!b.coverId;
+    var w = 44 + (n % 5) * 5, hh = 176 + ((n >>> 3) % 5) * 9;
+    if (photo) { hh = 190 + ((n >>> 3) % 3) * 10; w = Math.max(22, Math.min(72, Math.round(hh * b.spineRatio))); }
+    var kids = photo
+      ? [h('img', { class: 'sp-img', src: coverSrc(b.spineId), alt: '' })]
+      : art
+        ? [h('img', { class: 'sp-img', src: coverSrc(b.coverId), alt: '', loading: 'lazy' }), h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' }))]
+        : [h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' }))];
+    kids.push(h('span', { class: 'base', 'aria-hidden': 'true' }));
+    kids.push(b.status === 'read' ? h('span', { class: 'fin', 'aria-hidden': 'true' }) : null);
+    var btn = h('button', {
+      class: 'spine' + (photo ? ' photo' : '') + (art ? ' photo art' : '') + (title ? '' : ' missing') + (b.status === 'reading' ? ' reading' : ''),
+      type: 'button', title: label, 'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
+    }, kids);
+    styleBook(btn, b);
+    btn.style.setProperty('--w', w + 'px');
+    btn.style.setProperty('--h', hh + 'px');
+    btn.style.setProperty('--fs', Math.max(14, Math.round(w * 0.3)) + 'px');
+    return h('div', { class: 'slot' }, btn, kMarker(b));
+  }
+  /* Covers view: a standing book drawn as a box, cover forward, spine edge showing on the left. */
+  function book3d(b) {
+    var title = String(b.title || '').trim();
+    var label = (title || 'Untitled') + ' by ' + authorName(b);
+    var n = hash(title + '|' + authorName(b));
+    var bw = 76 + (n % 4) * 3, bh = Math.round(bw * (1.46 + ((n >>> 4) % 4) * 0.03)), bt = 26 + ((n >>> 6) % 4) * 3;
+    var photo = !!b.spineId && typeof b.spineRatio === 'number' && b.spineRatio > 0.05 && b.spineRatio < 1.2;
+    var art = !photo && !!b.coverId;
+    var front = h('div', { class: 'bk-front' });
+    if (b.coverId) {
+      var im = h('img', { src: coverSrc(b.coverId), alt: '', loading: 'lazy' });
+      im.addEventListener('error', function () { im.replaceWith(placeholder(b)); });
+      front.append(im);
+    } else front.append(placeholder(b));
+    var titleEl = function () { return h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' })); };
+    var kids = photo
+      ? [h('img', { class: 'sp-img', src: coverSrc(b.spineId), alt: '' })]
+      : art ? [h('img', { class: 'sp-img', src: coverSrc(b.coverId), alt: '', loading: 'lazy' }), titleEl()] : [titleEl()];
+    kids.push(h('span', { class: 'base', 'aria-hidden': 'true' }));
+    kids.push(b.status === 'read' ? h('span', { class: 'fin', 'aria-hidden': 'true' }) : null);
+    var sp = h('div', { class: 'bk-spine' + (photo ? ' photo' : '') + (art ? ' art' : '') }, kids);
+    styleBook(sp, b);
+    var btn = h('button', {
+      class: 'bk-btn' + (b.status === 'reading' ? ' reading' : ''), type: 'button', title: label,
+      'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
+    }, h('div', { class: 'book3d' }, front, sp));
+    btn.style.setProperty('--bh', bh + 'px');
+    btn.style.setProperty('--bt', bt + 'px');
+    var slot = h('div', { class: 'slot cv' }, btn, kMarker(b));
+    slot.style.setProperty('--bw', bw + 'px');
+    return slot;
+  }
+  function flatBook(b) {
+    var title = String(b.title || '').trim();
+    var label = (title || 'Untitled') + ' by ' + authorName(b);
+    var n = hash(title + '|' + authorName(b));
+    var w = 160 + (n % 5) * 10, hh = 30 + ((n >>> 4) % 4) * 4, art = !!b.coverId;
+    var btn = h('button', {
+      class: 'flat' + (art ? ' art' : '') + (title ? '' : ' missing'),
+      type: 'button', title: label, 'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
+    },
+      art ? h('img', { class: 'sp-img', src: coverSrc(b.coverId), alt: '', loading: 'lazy' }) : null,
+      h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' })),
+      h('span', { class: 'base', 'aria-hidden': 'true' }),
+      b.status === 'read' ? h('span', { class: 'fin', 'aria-hidden': 'true' }) : null);
+    styleBook(btn, b);
+    btn.style.setProperty('--w', w + 'px');
+    btn.style.setProperty('--h', hh + 'px');
+    btn.style.setProperty('--fs', Math.max(13, Math.round(hh * 0.42)) + 'px');
+    btn.style.setProperty('--dx', (((n >>> 5) % 5) - 2) * 3 + 'px');
+    return h('div', { class: 'fwrap' }, kMarker(b, 'side'), btn);
+  }
+  function shelfItems(items) {
+    var out = [], flats = [];
+    var per = view === 'covers' ? 4 : 5;
+    items.forEach(function (b) { if (b.flat) flats.push(b); else out.push(view === 'covers' ? book3d(b) : spine(b)); });
+    for (var i = 0; i < flats.length; i += per) out.push(h('div', { class: 'slot' }, h('div', { class: 'pile' }, flats.slice(i, i + per).map(flatBook))));
+    return out;
+  }
+
+  function renderStats() {
+    var c = counts();
+    statsEl.textContent = !loaded ? 'Loading your shelf' :
+      c.total ? plural(c.total, 'book') + ' · ' + plural(c.authors, 'author') + ' · ' + c.kindle + ' in Kindle · ' + c.done + ' finished' :
+      'No books yet';
+  }
+
+  function renderFilters() {
+    var c = counts();
+    var defs = [['all', 'All', c.total], ['kindle', 'In Kindle', c.kindle], ['unread', 'Unread', c.unread], ['done', 'Finished', c.done]];
+    if (c.missing) defs.push(['missing', 'Needs title', c.missing]);
+    if (filter === 'missing' && !c.missing) filter = 'all';
+    segEl.replaceChildren.apply(segEl, defs.map(function (d) {
+      return h('button', { class: 'chip', type: 'button', 'aria-pressed': String(filter === d[0]), onclick: function () { filter = d[0]; render(); } },
+        d[1], h('span', { class: 'n', text: String(d[2]) }));
+    }));
+  }
+
+  /* Shelves run A to Z by author. "Brandon Sanderson" files under Sanderson unless sorting by first name. */
+  function authorKey(name) {
+    var n = String(name || '').trim().replace(/\s+/g, ' ');
+    if (n.indexOf(',') >= 0) {
+      var cp = n.split(',');
+      var lastPart = cp[0].trim(), firstPart = cp.slice(1).join(' ').trim();
+      return sortBy === 'last' ? lastPart + ' ' + firstPart : firstPart + ' ' + lastPart;
+    }
+    if (sortBy === 'first') return n;
+    var parts = n.split(' ');
+    if (parts.length < 2) return n;
+    var li = parts.length - 1;
+    if (parts.length > 2 && /^(jr\.?|sr\.?|ii|iii|iv)$/i.test(parts[li])) li--;
+    return parts[li] + ' ' + parts.slice(0, li).join(' ');
+  }
+  function titleKey(t) { return String(t || '').trim().replace(/^(the|a|an)\s+/i, ''); }
+
+  function renderView() {
+    var chips = [['covers', 'Covers'], ['spines', 'Spines']].map(function (d) {
+      return h('button', { class: 'chip', type: 'button', 'aria-pressed': String(view === d[0]), onclick: function () {
+        view = d[0];
+        try { localStorage.setItem('shelfView', view); } catch (e) {}
+        render();
+      } }, d[1]);
+    });
+    chips.push(h('button', { class: 'chip', type: 'button', onclick: function (e) { openBackup(e.currentTarget); } }, 'Backup'));
+    var authorKeys = Array.from(new Set(books.map(function (b) { return norm(b.author); }).filter(Boolean)));
+    var allClosed = authorKeys.length > 0 && authorKeys.every(function (k) { return collapsed.has(k); });
+    if (authorKeys.length) chips.push(h('button', { class: 'chip', type: 'button', onclick: function () {
+      if (allClosed) collapsed.clear(); else authorKeys.forEach(function (k) { collapsed.add(k); });
+      saveCollapsed(); render();
+    } }, allClosed ? 'Open all' : 'Authors only'));
+    chips.push(h('button', { class: 'chip', type: 'button', title: 'Change how shelves are ordered', onclick: function () {
+      sortBy = sortBy === 'last' ? 'first' : 'last';
+      try { localStorage.setItem('shelfSort', sortBy); } catch (e) {}
+      render();
+    } }, 'A-Z by ' + (sortBy === 'last' ? 'last name' : 'first name')));
+    viewEl.replaceChildren.apply(viewEl, chips);
+  }
+
+  /* Shrink each title until all of it fits on its spine. */
+  function fitTitles(root) {
+    root.querySelectorAll('.sp-t').forEach(function (el) {
+      var inner = el.firstElementChild;
+      if (!inner) return;
+      el.style.fontSize = '';
+      var cs = getComputedStyle(el);
+      var availH = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var availW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      if (availH <= 0 || availW <= 0) return;
+      var size = parseFloat(cs.fontSize);
+      for (var guard = 0; guard < 40 && size > 7; guard++) {
+        if (inner.offsetHeight <= availH + 0.5 && inner.offsetWidth <= availW + 0.5) break;
+        size -= 0.5;
+        el.style.fontSize = size + 'px';
+      }
+    });
+  }
+
+  function render() {
+    renderStats();
+    renderFilters();
+    renderView();
+    var nodes = [];
+    if (storeProblem) {
+      nodes.push(h('div', { class: 'notice', text: storeProblem }));
+    } else if (!loaded) {
+      nodes.push(h('p', { class: 'hint', text: 'Loading your shelf…' }));
+    } else if (!books.length) {
+      nodes.push(h('div', { class: 'empty' },
+        h('h2', { text: 'Your shelf is empty' }),
+        h('p', { text: 'Pick an author, then add their cover images. Titles come from the file names, and you can fix any of them afterwards. Tap a book to see its full cover, tick Kindle and mark it finished.' }),
+        h('button', { class: 'btn primary', type: 'button', onclick: function (e) { openAdd(e.currentTarget); } }, 'Add books')));
+    } else {
+      var list = visible();
+      if (!list.length) {
+        nodes.push(h('div', { class: 'empty' },
+          h('h2', { text: 'Nothing matches' }),
+          h('p', { text: 'No books fit the current search and filter.' }),
+          h('button', { class: 'btn', type: 'button', onclick: function () { filter = 'all'; query = ''; qEl.value = ''; render(); } }, 'Clear search and filter')));
+      } else {
+        var groups = new Map();
+        list.forEach(function (b) {
+          var k = norm(b.author);
+          if (!groups.has(k)) groups.set(k, { name: authorName(b), items: [] });
+          groups.get(k).items.push(b);
+        });
+        var cmp = function (a, b) { return String(a).localeCompare(String(b), undefined, { sensitivity: 'base', numeric: true }); };
+        var sortedGroups = Array.from(groups.values()).sort(function (a, b) { return cmp(authorKey(a.name), authorKey(b.name)); });
+        sortedGroups.forEach(function (g) {
+          g.items.sort(function (a, b) {
+            var ta = String(a.title || '').trim(), tb = String(b.title || '').trim();
+            if (!ta !== !tb) return ta ? -1 : 1;
+            return cmp(titleKey(ta), titleKey(tb));
+          });
+          var k = g.items.filter(function (b) { return b.inKindle; }).length;
+          var rowCls = 'shelfrow' + (view === 'covers' ? ' covers' : '');
+          var loose = [], bySeries = new Map();
+          g.items.forEach(function (b) {
+            var sn = String(b.series || '').trim();
+            if (!sn) { loose.push(b); return; }
+            var sk = norm(sn);
+            if (!bySeries.has(sk)) bySeries.set(sk, { name: sn, items: [] });
+            bySeries.get(sk).items.push(b);
+          });
+          var gk = norm(g.name), isCol = collapsed.has(gk);
+          var toggle = function () {
+            if (collapsed.has(gk)) collapsed.delete(gk); else collapsed.add(gk);
+            saveCollapsed(); render();
+          };
+          var kids = [h('div', {
+            class: 'rail clickable' + (isCol ? ' closed' : ''), role: 'button', tabindex: '0', 'aria-expanded': String(!isCol),
+            title: isCol ? 'Open this shelf' : 'Collapse this shelf', onclick: toggle,
+            onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }
+          }, h('span', { class: 'chev', 'aria-hidden': 'true' }), h('h2', { class: 'plate' }, h('span', { class: 'pl', text: g.name })), h('span', { class: 'count' }, plural(g.items.length, 'book'), h('span', { class: 'ck', text: ' · ' + k + ' in Kindle' })),
+            h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + g.name, 'aria-label': 'Add a book to ' + g.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'))];
+          if (isCol) {
+            /* collapsed: the author bar only */
+          } else if (bySeries.size === 0) {
+            kids.push(h('div', { class: rowCls }, shelfItems(g.items)));
+          } else {
+            if (loose.length) kids.push(h('div', { class: rowCls }, shelfItems(loose)));
+            Array.from(bySeries.values()).sort(function (a, b) { return cmp(titleKey(a.name), titleKey(b.name)); }).forEach(function (sr) {
+              sr.items.sort(function (a, b) {
+                var na = parseFloat(a.seriesNo), nb = parseFloat(b.seriesNo);
+                var ha = isFinite(na), hb = isFinite(nb);
+                if (ha && hb && na !== nb) return na - nb;
+                if (ha !== hb) return ha ? -1 : 1;
+                var ta = String(a.title || '').trim(), tb = String(b.title || '').trim();
+                if (!ta !== !tb) return ta ? -1 : 1;
+                return cmp(titleKey(ta), titleKey(tb));
+              });
+              kids.push(h('div', { class: 'subrail' }, h('span', { class: 'sname', text: sr.name }), h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
+                h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { openAdd(e.currentTarget, { author: g.name, series: sr.name }); } }, '+ Add')));
+              kids.push(h('div', { class: rowCls }, shelfItems(sr.items)));
+            });
+          }
+          nodes.push(h('section', { class: 'case' + (isCol ? ' shut' : '') }, kids));
+        });
+      }
+    }
+    shelf.replaceChildren.apply(shelf, nodes);
+    fitTitles(shelf);
+    fitPlates(shelf);
+  }
+  /* Shrink an author's name until it fits on one line in its plate. */
+  function fitPlates(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('.plate'), function (pl) {
+      var inner = pl.firstElementChild;
+      if (!inner) return;
+      var size = 15;
+      pl.style.fontSize = size + 'px';
+      var avail = pl.clientWidth - 20;
+      while (size > 8 && avail > 0 && inner.scrollWidth > avail) { size -= 0.5; pl.style.fontSize = size + 'px'; }
+    });
+  }
+  window.addEventListener('resize', function () { fitPlates(shelf); });
+
+  /* ---------- sheet plumbing ---------- */
+  function uniqueAuthors() {
+    var seen = new Map();
+    books.forEach(function (b) { var k = norm(b.author); if (k && !seen.has(k)) seen.set(k, authorName(b)); });
+    return Array.from(seen.values()).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
+  }
+  function uniqueSeries() {
+    var seen = new Map();
+    books.forEach(function (b) { var n = String(b.series || '').trim(), k = norm(n); if (k && !seen.has(k)) seen.set(k, n); });
+    return Array.from(seen.values()).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
+  }
+  function showSheet(nodes, from, focusEl) {
+    opener = from || null;
+    sheet.replaceChildren.apply(sheet, nodes);
+    scrim.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    if (focusEl) setTimeout(function () { try { focusEl.focus(); } catch (e) {} }, 0);
+  }
+  function closeSheet() {
+    if (sheetBusy) return;
+    scrim.hidden = true;
+    sheet.replaceChildren();
+    document.documentElement.style.overflow = '';
+    sheetUrls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+    sheetUrls = [];
+    if (opener && document.contains(opener)) { try { opener.focus(); } catch (e) {} }
+    opener = null;
+  }
+  scrim.addEventListener('mousedown', function (e) { if (e.target === scrim) closeSheet(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !scrim.hidden) closeSheet(); });
+
+  /* ---------- add books ---------- */
+  function openAdd(from, preset) {
+    if (!db) return;
+    preset = preset || {};
+    var staged = [], saving = false;
+    var msg = h('p', { class: 'msg', role: 'status' });
+    var authorIn = h('input', { id: 'fAuthor', class: 'in', type: 'text', list: 'authorList', autocomplete: 'off', placeholder: 'Brandon Sanderson', value: preset.author || '' });
+    var seriesAdd = h('input', { id: 'fSeries', class: 'in', type: 'text', list: 'seriesList', autocomplete: 'off', placeholder: 'Optional', value: preset.series || '' });
+    var seriesAddDl = h('datalist', { id: 'seriesList' }, uniqueSeries().map(function (a) { return h('option', { value: a }); }));
+    var dl = h('datalist', { id: 'authorList' }, uniqueAuthors().map(function (a) { return h('option', { value: a }); }));
+    var fileIn = h('input', { id: 'fFiles', class: 'sr', type: 'file', accept: 'image/*', multiple: true });
+    var list = h('div', { class: 'staged' });
+    var hint = h('p', { class: 'hint', text: assets ? 'Choose the cover images for this author. Each image becomes one book.' : 'Cover uploads are not available in this view. You can still add titles.' });
+    var saveBtn = h('button', { class: 'btn primary', type: 'submit' }, 'Add books');
+    var cancelBtn = h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Cancel');
+
+    function setMsg(t, err) { msg.textContent = t || ''; msg.className = 'msg' + (err ? ' err' : ''); }
+
+    function renderStaged() {
+      list.replaceChildren.apply(list, staged.map(function (s) {
+        var thumb = h('div', { class: 'thumb' }, s.url ? h('img', { src: s.url, alt: '' }) : h('div', { class: 'ph', text: 'No cover' }));
+        var t = h('input', { class: 'in', type: 'text', value: s.title, placeholder: 'Title', 'aria-label': 'Title', autocomplete: 'off' });
+        t.addEventListener('input', function () { s.title = t.value; });
+        var k = h('input', { type: 'checkbox' });
+        k.checked = s.inKindle;
+        k.addEventListener('change', function () { s.inKindle = k.checked; });
+        var rm = h('button', { class: 'x', type: 'button', 'aria-label': 'Remove this book', onclick: function () {
+          if (saving) return;
+          if (s.url) { try { URL.revokeObjectURL(s.url); } catch (e) {} }
+          staged.splice(staged.indexOf(s), 1); renderStaged();
+        } }, '×');
+        return h('div', { class: 'srow' }, thumb, h('div', { class: 'scol' }, t, h('label', { class: 'chk' }, k, 'In Kindle')), rm);
+      }));
+      saveBtn.textContent = staged.length ? 'Add ' + plural(staged.length, 'book') : 'Add books';
+      saveBtn.disabled = saving || !staged.length;
+      hint.hidden = staged.length > 0;
+    }
+
+    fileIn.addEventListener('change', function () {
+      Array.prototype.forEach.call(fileIn.files, function (f) {
+        var u = URL.createObjectURL(f); sheetUrls.push(u);
+        staged.push({ file: f, url: u, title: guessTitle(f.name), inKindle: false });
+      });
+      fileIn.value = '';
+      setMsg('');
+      renderStaged();
+    });
+
+    var pickers = [];
+    if (assets) pickers.push(h('label', { class: 'btn pick' }, 'Choose covers', fileIn));
+    pickers.push(h('button', { class: 'btn', type: 'button', onclick: function () {
+      if (saving) return;
+      staged.push({ file: null, url: '', title: '', inKindle: false }); setMsg(''); renderStaged();
+    } }, 'Add without cover'));
+
+    sheet.onsubmit = async function (e) {
+      e.preventDefault();
+      if (saving) return;
+      var author = authorIn.value.trim();
+      if (!author) { setMsg('Enter the author first.', true); authorIn.focus(); return; }
+      if (!staged.length) { setMsg('Choose at least one cover or add a book without one.', true); return; }
+      var bad = staged.filter(function (s) { return !s.file && !s.title.trim(); });
+      if (bad.length) { setMsg('Books without a cover need a title.', true); return; }
+      saving = true; sheetBusy = true; renderStaged();
+      var done = [];
+      try {
+        for (var i = 0; i < staged.length; i++) {
+          var s = staged[i];
+          setMsg('Saving ' + (i + 1) + ' of ' + staged.length + '…');
+          var up = s.file ? await uploadCover(s.file) : null;
+          var ref = db.collection('books').doc();
+          await ref.set({ title: s.title.trim(), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, inKindle: !!s.inKindle, status: 'unread', series: seriesAdd.value.trim(), createdAt: Date.now() });
+          done.push(s);
+        }
+        sheetBusy = false; saving = false;
+        closeSheet();
+      } catch (err) {
+        staged = staged.filter(function (s) { return done.indexOf(s) < 0; });
+        saving = false; sheetBusy = false;
+        setMsg((done.length ? done.length + ' saved. ' : '') + errText(err), true);
+        renderStaged();
+      }
+    };
+
+    renderStaged();
+    showSheet([
+      h('h2', { id: 'sheetTitle', text: 'Add books' }),
+      h('label', { class: 'field' }, h('span', { text: 'Author' }), authorIn, dl),
+      h('label', { class: 'field' }, h('span', { text: 'Series' }), seriesAdd, seriesAddDl),
+      h('div', { class: 'row' }, pickers),
+      hint, list, msg,
+      h('div', { class: 'actions' }, cancelBtn, saveBtn)
+    ], from, authorIn);
+  }
+
+  /* ---------- full cover view ---------- */
+  function openView(b, from) {
+    if (!db) return;
+    function latest() { return books.filter(function (x) { return x.id === b.id; })[0] || b; }
+    var cur = { inKindle: !!b.inKindle, status: b.status === 'reading' || b.status === 'read' ? b.status : 'unread', finishedAt: b.finishedAt || null };
+    var title = String(b.title || '').trim();
+    var msg = h('p', { class: 'msg', role: 'status' });
+    function setMsg(t, err) { msg.textContent = t || ''; msg.className = 'msg' + (err ? ' err' : ''); }
+
+    function bigPh() { return h('div', { class: 'bigph' }, placeholder(b)); }
+    var media;
+    if (b.coverId) {
+      media = h('img', { class: 'bigcover', src: coverSrc(b.coverId), alt: 'Cover of ' + (title || 'this book') });
+      media.addEventListener('error', function () { media.replaceWith(bigPh()); });
+    } else media = bigPh();
+
+    var sub = h('p', { class: 'by' });
+    var kbtn = h('button', { class: 'btn kbtn', type: 'button' });
+    var fbtn = h('button', { class: 'btn fbtn', type: 'button' });
+    var rbtn = h('button', { class: 'btn rbtn', type: 'button' });
+    function sync() {
+      var when = cur.finishedAt ? ' on ' + new Date(cur.finishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      sub.textContent = authorName(b) + (cur.status === 'read' ? ' · Finished' + when : cur.status === 'reading' ? ' · Reading' : '');
+      kbtn.setAttribute('aria-pressed', String(cur.inKindle)); kbtn.textContent = cur.inKindle ? 'In Kindle' : 'Not in Kindle';
+      fbtn.setAttribute('aria-pressed', String(cur.status === 'read')); fbtn.textContent = cur.status === 'read' ? 'Finished' : 'Mark as finished';
+      rbtn.setAttribute('aria-pressed', String(cur.status === 'reading')); rbtn.textContent = cur.status === 'reading' ? 'Reading now' : 'Start reading';
+      rbtn.hidden = cur.status === 'read';
+    }
+    function save(patch, apply) {
+      if (busy.has(b.id)) return;
+      busy.add(b.id); setMsg('');
+      db.doc('books/' + b.id).update(patch)
+        .then(function () { apply(); sync(); })
+        .catch(function (e) { setMsg(errText(e), true); })
+        .then(function () { busy.delete(b.id); });
+    }
+    kbtn.addEventListener('click', function () { save({ inKindle: !cur.inKindle }, function () { cur.inKindle = !cur.inKindle; }); });
+    fbtn.addEventListener('click', function () {
+      if (cur.status === 'read') save({ status: 'unread', finishedAt: null }, function () { cur.status = 'unread'; cur.finishedAt = null; });
+      else { var t = Date.now(); save({ status: 'read', finishedAt: t }, function () { cur.status = 'read'; cur.finishedAt = t; }); }
+    });
+    rbtn.addEventListener('click', function () {
+      var next = cur.status === 'reading' ? 'unread' : 'reading';
+      save({ status: next }, function () { cur.status = next; });
+    });
+    sync();
+
+    sheet.onsubmit = function (e) { e.preventDefault(); };
+    var closeBtn = h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Close');
+    showSheet([
+      media,
+      h('div', { class: 'vmeta' }, h('h2', { id: 'sheetTitle', text: title || 'Untitled' }), sub),
+      h('div', { class: 'toggles' }, kbtn, fbtn, rbtn),
+      msg,
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn', type: 'button', onclick: function () { var f = from, cb = latest(); closeSheet(); openEdit(cb, f); } }, 'Edit details'),
+        closeBtn)
+    ], from, closeBtn);
+  }
+
+  /* ---------- edit a book ---------- */
+  function openEdit(b, from) {
+    if (!db) return;
+    var newFile = null, saving = false;
+    var msg = h('p', { class: 'msg', role: 'status' });
+    function setMsg(t, err) { msg.textContent = t || ''; msg.className = 'msg' + (err ? ' err' : ''); }
+
+    var thumb = h('div', { class: 'thumb' });
+    function setThumb(url) {
+      thumb.replaceChildren(url ? h('img', { src: url, alt: '' }) : placeholder(b));
+    }
+    setThumb(b.coverId ? coverSrc(b.coverId) : '');
+
+    var titleIn = h('input', { id: 'eTitle', class: 'in', type: 'text', value: b.title || '', autocomplete: 'off' });
+    var authorIn = h('input', { id: 'eAuthor', class: 'in', type: 'text', list: 'authorList2', value: b.author || '', autocomplete: 'off' });
+    var dl = h('datalist', { id: 'authorList2' }, uniqueAuthors().map(function (a) { return h('option', { value: a }); }));
+    var seriesIn = h('input', { id: 'eSeries', class: 'in', type: 'text', list: 'seriesList2', value: b.series || '', autocomplete: 'off', placeholder: 'Optional, e.g. Stormlight Archive' });
+    var seriesDl = h('datalist', { id: 'seriesList2' }, uniqueSeries().map(function (a) { return h('option', { value: a }); }));
+    var seriesNoIn = h('input', { id: 'eSeriesNo', class: 'in', type: 'text', inputmode: 'decimal', value: b.seriesNo == null ? '' : String(b.seriesNo), autocomplete: 'off', placeholder: 'e.g. 1' });
+    var statusIn = h('select', { id: 'eStatus', class: 'in' },
+      [['unread', 'Unread'], ['reading', 'Reading'], ['read', 'Finished']].map(function (o) { return h('option', { value: o[0], text: o[1] }); }));
+    statusIn.value = b.status === 'reading' || b.status === 'read' ? b.status : 'unread';
+    var kindleIn = h('input', { id: 'eKindle', type: 'checkbox' });
+    kindleIn.checked = !!b.inKindle;
+    var flatIn = h('input', { id: 'eFlat', type: 'checkbox' });
+    flatIn.checked = !!b.flat;
+    var newSpine = null, dropSpine = false;
+
+    var coverCol = [];
+    if (assets) {
+      var fileIn = h('input', { id: 'eFile', class: 'sr', type: 'file', accept: 'image/*' });
+      fileIn.addEventListener('change', function () {
+        var f = fileIn.files && fileIn.files[0];
+        if (!f) return;
+        newFile = f;
+        var u = URL.createObjectURL(f); sheetUrls.push(u);
+        setThumb(u);
+        if (!titleIn.value.trim()) titleIn.value = guessTitle(f.name);
+        fileIn.value = '';
+      });
+      coverCol.push(h('label', { class: 'btn pick' }, b.coverId ? 'Replace cover' : 'Add cover', fileIn));
+      var spineIn = h('input', { id: 'eSpine', class: 'sr', type: 'file', accept: 'image/*' });
+      spineIn.addEventListener('change', function () {
+        var f = spineIn.files && spineIn.files[0];
+        if (!f) return;
+        newSpine = f; dropSpine = false; spineIn.value = '';
+        setMsg('Spine photo ready. Save to apply it.');
+      });
+      coverCol.push(h('label', { class: 'btn pick' }, b.spineId ? 'Replace spine photo' : 'Add spine photo', spineIn));
+      if (b.spineId) coverCol.push(h('button', { class: 'btn', type: 'button', onclick: function () {
+        dropSpine = true; newSpine = null; setMsg('The spine photo will be removed when you save.');
+      } }, 'Remove spine photo'));
+    }
+
+    var danger = h('div', { class: 'danger' });
+    function showDanger(confirming) {
+      if (!confirming) {
+        danger.replaceChildren(h('div', { class: 'row' }, h('button', { class: 'btn warn', type: 'button', onclick: function () { if (!saving) showDanger(true); } }, 'Delete book')));
+        return;
+      }
+      danger.replaceChildren(
+        h('p', { text: 'Delete this book and its cover? This cannot be undone.' }),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn', type: 'button', onclick: function () { showDanger(false); } }, 'Keep it'),
+          h('button', { class: 'btn solid-danger', type: 'button', onclick: async function () {
+            if (saving) return;
+            saving = true; sheetBusy = true;
+            try {
+              await db.doc('books/' + b.id).delete();
+              if (b.coverId && assets) { try { await assets.delete(b.coverId); } catch (e) {} }
+              if (b.spineId && assets) { try { await assets.delete(b.spineId); } catch (e) {} }
+              sheetBusy = false; saving = false; closeSheet();
+            } catch (err) { saving = false; sheetBusy = false; setMsg(errText(err), true); showDanger(false); }
+          } }, 'Delete')));
+    }
+    showDanger(false);
+
+    var saveBtn = h('button', { class: 'btn primary', type: 'submit' }, 'Save');
+    sheet.onsubmit = async function (e) {
+      e.preventDefault();
+      if (saving) return;
+      var author = authorIn.value.trim();
+      if (!author) { setMsg('Enter the author.', true); authorIn.focus(); return; }
+      if (!titleIn.value.trim() && !b.coverId && !newFile) { setMsg('A book without a cover needs a title.', true); titleIn.focus(); return; }
+      saving = true; sheetBusy = true; saveBtn.disabled = true; setMsg('Saving…');
+      try {
+        var patch = { title: titleIn.value.trim(), author: author, status: statusIn.value, inKindle: kindleIn.checked };
+        if (statusIn.value === 'read') { if (b.status !== 'read' || !b.finishedAt) patch.finishedAt = Date.now(); } else patch.finishedAt = null;
+        patch.flat = flatIn.checked;
+        patch.series = seriesIn.value.trim();
+        patch.seriesNo = seriesNoIn.value.trim();
+        if (newFile) { var up = await uploadCover(newFile); patch.coverId = up.id; patch.color = up.color; patch.accent = up.accent; }
+        if (newSpine) {
+          var sp = await shrink(newSpine);
+          var sr = await assets.upload(sp.blob, { type: 'image/jpeg' });
+          patch.spineId = sr.id; patch.spineRatio = Math.round(sp.w / sp.h * 1000) / 1000;
+        } else if (dropSpine) { patch.spineId = null; patch.spineRatio = null; }
+        await db.doc('books/' + b.id).update(patch);
+        if (newFile && b.coverId && assets) { try { await assets.delete(b.coverId); } catch (e2) {} }
+        if ((newSpine || dropSpine) && b.spineId && assets) { try { await assets.delete(b.spineId); } catch (e3) {} }
+        sheetBusy = false; saving = false; closeSheet();
+      } catch (err) {
+        saving = false; sheetBusy = false; saveBtn.disabled = false; setMsg(errText(err), true);
+      }
+    };
+
+    showSheet([
+      h('h2', { id: 'sheetTitle', text: 'Edit book' }),
+      h('div', { class: 'editcover' }, thumb, h('div', { class: 'row' }, coverCol)),
+      h('label', { class: 'field' }, h('span', { text: 'Title' }), titleIn),
+      h('label', { class: 'field' }, h('span', { text: 'Author' }), authorIn, dl),
+      h('label', { class: 'field' }, h('span', { text: 'Series' }), seriesIn, seriesDl),
+      h('label', { class: 'field' }, h('span', { text: 'Number in series' }), seriesNoIn),
+      h('label', { class: 'field' }, h('span', { text: 'Reading status' }), statusIn),
+      h('label', { class: 'chk' }, kindleIn, 'In my Kindle library'),
+      h('label', { class: 'chk' }, flatIn, 'Lay flat in a stack on the shelf'),
+      msg,
+      h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Cancel'), saveBtn),
+      danger
+    ], from, titleIn);
+  }
+
+  function openBackup(from) {
+    var msg = h('p', { class: 'msg', role: 'status' });
+    function setMsg(t, err) { msg.textContent = t || ''; msg.className = 'msg' + (err ? ' err' : ''); }
+    var fileIn = h('input', { class: 'sr', type: 'file', accept: 'application/json,.json' });
+    fileIn.addEventListener('change', async function () {
+      var f = fileIn.files && fileIn.files[0]; fileIn.value = '';
+      if (!f || !store) return;
+      try { setMsg('Restoring…'); var n = await store.importAll(JSON.parse(await f.text())); setMsg('Restored ' + n + ' books.'); }
+      catch (e) { setMsg(e && e.message ? e.message : 'Could not read that file.', true); }
+    });
+    showSheet([
+      h('h2', { id: 'sheetTitle', text: 'Back up your library' }),
+      h('p', { class: 'hint', text: 'Your books and covers live only on this device. Save a backup file now and then, and keep it somewhere safe like iCloud Drive. If this device or its browser data is ever lost, restore from that file.' }),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn primary', type: 'button', onclick: async function () {
+          if (!store) return;
+          try {
+            setMsg('Preparing…');
+            var data = await store.exportAll();
+            var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kellys-library-backup.json';
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+            setMsg('Backup saved: ' + plural(data.books.length, 'book') + '.');
+          } catch (e) { setMsg('Could not make the backup.', true); }
+        } }, 'Save backup file'),
+        h('label', { class: 'btn pick' }, 'Restore from file', fileIn)),
+      msg,
+      h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Close'))
+    ], from, null);
+  }
+
+  /* ---------- wiring ---------- */
+  fab.addEventListener('click', function (e) { openAdd(e.currentTarget); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitTitles(shelf); fitPlates(shelf); });
+  qEl.addEventListener('input', function () { query = qEl.value; render(); });
+  render();
+
+  (async function init() {
+    try { store = await localStore(); db = store.db; assets = store.assets; } catch (e) { db = null; assets = null; }
+    if (!db) {
+      loaded = true;
+      storeProblem = 'This browser is blocking on-device storage (private browsing can do this), so books cannot be saved here. Open the page in a normal Safari window.';
+      fab.hidden = true;
+      render();
+      return;
+    }
+    db.collection('books').onSnapshot(function (snap) {
+      books = snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
+      loaded = true; storeProblem = ''; render();
+    }, function (err) {
+      loaded = true;
+      storeProblem = err && err.code === 'revoked' ? 'Could not read your saved books. Reload the page to try again.' : 'Could not load your books. Reload the page to try again.';
+      render();
+    });
+  })();
+})();
+</script>
+
+</body>
+</html>
