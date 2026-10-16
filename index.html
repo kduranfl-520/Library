@@ -462,7 +462,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v19';
+  var APP_VERSION = 'v20';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1053,7 +1053,12 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           if (groups.get(k).shelfIds) groups.get(k).shelfIds.push(e.id); else groups.get(k).shelfIds = [e.id];
         });
         var cmp = function (a, b) { return String(a).localeCompare(String(b), undefined, { sensitivity: 'base', numeric: true }); };
-        var sortedGroups = Array.from(groups.values()).sort(function (a, b) { return cmp(authorKey(a.name), authorKey(b.name)); });
+        var isRd = function (g) { return g.items.some(function (b) { return b.status === 'reading'; }); };
+        var sortedGroups = Array.from(groups.values()).sort(function (a, b) {
+          var ra = isRd(a), rb = isRd(b);
+          if (ra !== rb) return ra ? -1 : 1;
+          return cmp(authorKey(a.name), authorKey(b.name));
+        });
         sortedGroups.forEach(function (g) {
           g.items.sort(function (a, b) {
             var ta = String(a.title || '').trim(), tb = String(b.title || '').trim();
