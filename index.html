@@ -194,14 +194,15 @@ select.in { padding-right: 8px; }
   border-top: 1px solid rgba(0, 0, 0, 0.35); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); position: relative; z-index: 1;
 }
 .subrail .sname { margin-right: auto; min-width: 0; overflow-wrap: anywhere; }
+.subrail.done .sname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .subrail .sname::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--brass); vertical-align: 0; }
 .subrail.done { background: linear-gradient(#EBC65A, #C99A2E); color: #2A1F08; }
 .subrail.done .sname::before { background: #2A1F08; }
 .subrail.done .addbtn { color: #2A1F08; border-color: rgba(42, 31, 8, 0.6); }
 .subrail.done .addbtn.on { background: #2A1F08; border-color: #2A1F08; color: #EBC65A; }
 .addbtn.on { background: #E3B84A; border-color: #E3B84A; color: #2A1F08; }
-@media (max-width: 520px) { .subrail.done .scount { display: none; } .subrail .sname { min-width: 4.5em; } }
-.stag { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 10px; background: #2A1F08; color: #EBC65A; white-space: nowrap; }
+@media (max-width: 520px) { .stag .stxt { display: none; } .stag { width: 16px; height: 16px; padding: 0; display: grid; place-items: center; border-radius: 50%; font-size: 10px; } .subrail.done .addbtn:not(.rmbtn) { padding: 0 8px; } .subrail.done .scount { display: none; } .subrail .sname { min-width: 4.5em; } .subrail.done { gap: 8px; padding-left: 20px; padding-right: 14px; } }
+.stag { font-size: 9px; font-weight: 700; letter-spacing: 0.03em; padding: 2px 6px; line-height: 1.2; flex: none; border-radius: 10px; background: #2A1F08; color: #EBC65A; white-space: nowrap; }
 .subrail .scount { font-size: 12px; font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
 @media (max-width: 520px) { .rail .count .ck { display: none; } }
 .rail .count { color: var(--rail-fg); line-height: 1; padding-top: 2px; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -477,7 +478,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v26';
+  var APP_VERSION = 'v27';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1163,7 +1164,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
                 return cmp(titleKey(ta), titleKey(tb));
               });
               var sdone = seriesIsDone(g.name, sr.name);
-              kids.push(h('div', { class: 'subrail' + (sdone ? ' done' : '') }, h('span', { class: 'sname', text: sr.name }), sdone ? h('span', { class: 'stag', text: '✓ COMPLETE' }) : null, h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
+              kids.push(h('div', { class: 'subrail' + (sdone ? ' done' : '') }, h('span', { class: 'sname', text: sr.name }), sdone ? h('span', { class: 'stag', title: 'Series complete' }, h('b', { text: '✓' }), h('span', { class: 'stxt', text: ' COMPLETE' })) : null, h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
                 h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { openAdd(e.currentTarget, { author: g.name, series: sr.name }); } }, '+ Add'),
                 h('button', { class: 'addbtn rmbtn' + (sdone ? ' on' : ''), type: 'button', 'aria-pressed': String(sdone), title: sdone ? 'Series complete. Tap to undo' : 'Mark this series complete', 'aria-label': (sdone ? 'Unmark ' : 'Mark ') + sr.name + ' as complete', onclick: function () { toggleSeriesDone(g.name, sr.name); } }, '✓')));
               shelfRows(sr.items).forEach(function (r) { kids.push(r); });
@@ -1177,8 +1178,16 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     fitTitles(shelf);
     fitPlates(shelf);
     fitCovers(shelf);
+    fitSeriesNames(shelf);
   }
   /* Shrink an author's name until it fits on one line in its plate. */
+  function fitSeriesNames(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('.subrail.done .sname'), function (el) {
+      var size = 13;
+      el.style.fontSize = size + 'px';
+      while (size > 8 && el.scrollWidth > el.clientWidth + 1) { size -= 0.5; el.style.fontSize = size + 'px'; }
+    });
+  }
   function fitPlates(root) {
     Array.prototype.forEach.call(root.querySelectorAll('.plate'), function (pl) {
       var inner = pl.firstElementChild;
@@ -1189,7 +1198,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       while (size > 8 && avail > 0 && inner.scrollWidth > avail) { size -= 0.5; pl.style.fontSize = size + 'px'; }
     });
   }
-  window.addEventListener('resize', function () { fitPlates(shelf); fitCovers(shelf); });
+  window.addEventListener('resize', function () { fitPlates(shelf); fitCovers(shelf); fitSeriesNames(shelf); });
 
   /* ---------- sheet plumbing ---------- */
   function uniqueAuthors() {
