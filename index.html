@@ -491,7 +491,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v37';
+  var APP_VERSION = 'v38';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1167,7 +1167,15 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             shelfRows(g.items).forEach(function (r) { kids.push(r); });
           } else {
             if (loose.length) shelfRows(loose).forEach(function (r) { kids.push(r); });
-            Array.from(bySeries.values()).sort(function (a, b) { return cmp(titleKey(a.name), titleKey(b.name)); }).forEach(function (sr) {
+            var seriesRead = function (sr) {
+              var all = books.filter(function (x) { return norm(x.author) === gk && norm(x.series) === norm(sr.name); });
+              return all.length > 0 && all.every(function (x) { return x.status === 'read'; });
+            };
+            Array.from(bySeries.values()).sort(function (a, b) {
+              var da = seriesRead(a), db2 = seriesRead(b);
+              if (da !== db2) return da ? 1 : -1;
+              return cmp(titleKey(a.name), titleKey(b.name));
+            }).forEach(function (sr) {
               sr.items.sort(function (a, b) {
                 var na = parseFloat(a.seriesNo), nb = parseFloat(b.seriesNo);
                 var ha = isFinite(na), hb = isFinite(nb);
