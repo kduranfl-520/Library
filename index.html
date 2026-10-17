@@ -164,6 +164,11 @@ select.in { padding-right: 8px; }
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22), inset 0 10px 16px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
+.casewrap { position: relative; min-width: 0; }
+/* Star placement B: hangs on the top-left corner of the bookcase. Hidden when off (still tappable).
+   Placement C, if B does not work out: give #shelf a left margin of ~34px and use left: -30px; top: 3px; width: 24px; height: 26px; font-size: 22px on the star. */
+.wstar { position: absolute; z-index: 2; left: -9px; top: -9px; width: 22px; height: 22px; padding: 0; border: 0; background: none; color: transparent; font-size: 22px; line-height: 1; cursor: pointer; display: grid; place-items: center; text-shadow: none; }
+.wstar.on { color: #E3B84A; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55)); }
 .case.shut { border-bottom: 0; border-radius: 8px; }
 .rail {
   margin-inline: -8px; padding: 0 14px; height: 32px; box-sizing: border-box; background: var(--wood-frame);
@@ -491,7 +496,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v39';
+  var APP_VERSION = 'v40';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -877,6 +882,13 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       onclick: function () { toggleKindle(b); }
     }, h('span', { class: 'kd' }));
   }
+  function writingMatches(a) { return seriesMeta.filter(function (m) { return m.authorMeta && m.writing && norm(m.author) === norm(a); }); }
+  function toggleWriting(a) {
+    if (!db) return;
+    var cur = writingMatches(a);
+    var ps = cur.length ? cur.map(function (m) { return db.doc('books/' + m.id).delete(); }) : [db.doc('books/' + 'am_' + hash(norm(a)).toString(36)).set({ authorMeta: true, writing: true, author: a, createdAt: Date.now() })];
+    Promise.all(ps).catch(function () {});
+  }
   function seriesMetaId(a, n) { return 'sm_' + hash(norm(a) + '|' + norm(n)).toString(36); }
   function seriesMatches(a, n) { return seriesMeta.filter(function (m) { return m.complete && norm(m.author) === norm(a) && norm(m.series) === norm(n); }); }
   function seriesIsDone(a, n) { return seriesMatches(a, n).length > 0; }
@@ -1191,7 +1203,9 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
               if (!sCol) shelfRows(sr.items).forEach(function (r) { kids.push(r); });
             });
           }
-          nodes.push(h('section', { class: 'case' + (isCol ? ' shut' : ''), 'data-gk': gk }, kids));
+          var writing = writingMatches(g.name).length > 0;
+          var star = h('button', { class: 'wstar' + (writing ? ' on' : ''), type: 'button', 'aria-pressed': String(writing), title: writing ? 'Still writing. Tap to undo' : 'Mark as still writing', 'aria-label': 'Still writing a series: ' + g.name, onclick: function () { toggleWriting(g.name); } }, '★');
+          nodes.push(h('div', { class: 'casewrap' }, star, h('section', { class: 'case' + (isCol ? ' shut' : ''), 'data-gk': gk }, kids)));
         });
       }
     }
@@ -1764,8 +1778,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     }
     db.collection('books').onSnapshot(function (snap) {
       var all = snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
-      books = all.filter(function (o) { return !o.shelfOnly && !o.seriesMeta; });
-      seriesMeta = all.filter(function (o) { return o.seriesMeta; });
+      books = all.filter(function (o) { return !o.shelfOnly && !o.seriesMeta && !o.authorMeta; });
+      seriesMeta = all.filter(function (o) { return o.seriesMeta || o.authorMeta; });
       emptyShelves = all.filter(function (o) { return o.shelfOnly; });
       loaded = true; storeProblem = ''; render();
     }, function (err) {
