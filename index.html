@@ -306,26 +306,6 @@ select.in { padding-right: 8px; }
 .fin { position: absolute; z-index: 2; bottom: 8px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #E3B341; }
 .fin::after { content: ""; position: absolute; left: 4px; top: 2px; width: 3px; height: 6px; border: solid #3A2A0E; border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
 
-/* Books lying flat in a stack */
-.pile { display: flex; flex-direction: column-reverse; align-items: center; margin: 0 8px 0 26px; }
-.flat {
-  --shade: linear-gradient(to bottom, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.35));
-  width: var(--w, 170px); height: var(--h, 32px); margin: 1px 0 0; padding: 0 30px; border-radius: 2px;
-  display: flex; align-items: center; justify-content: center; transform: translateX(var(--dx, 0px)) rotate(var(--rot, 0deg));
-}
-.flat .sp-t { writing-mode: horizontal-tb; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.flat::before, .flat::after { content: ""; position: absolute; top: 0; bottom: 0; }
-.flat::before { left: 22px; }
-.flat::after { right: 22px; }
-.flat.d0::before, .flat.d0::after { width: 4px; background: var(--acc); }
-.flat.d1::before, .flat.d1::after { width: 3px; border-inline: 1px solid var(--acc); }
-.flat.d2::before, .flat.d2::after { width: 3px; border-inline: 1px solid var(--ink); opacity: 0.55; }
-.flat.d2 .sp-t { flex: 0 1 auto; padding: 2px 10px; background: var(--ink); color: var(--bgc); text-shadow: none; border-radius: 1px; }
-.flat .base { top: 0; bottom: 0; left: auto; right: 0; width: 26px; height: auto; }
-.fwrap { position: relative; display: flex; align-items: center; }
-.ktop.side { top: 50%; left: -22px; margin: -14px 0 0; }
-.flat .fin { top: 50%; bottom: auto; left: auto; right: 8px; margin: -6px 0 0; }
-
 .ph {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
   padding: 10px; text-align: center; background: var(--surface-2); border: 1px dashed var(--line);
@@ -505,7 +485,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v41';
+  var APP_VERSION = 'v42';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1075,38 +1055,16 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     slot.style.setProperty('--bh', bh + 'px');
     return slot;
   }
-  function flatBook(b) {
-    var title = String(b.title || '').trim();
-    var label = (title || 'Untitled') + ' by ' + authorName(b);
-    var n = hash(title + '|' + authorName(b));
-    var w = 160 + (n % 5) * 10, hh = 30 + ((n >>> 4) % 4) * 4, art = !!b.coverId;
-    var btn = h('button', {
-      class: 'flat' + (art ? ' art' : '') + (title ? '' : ' missing'),
-      type: 'button', 'data-bid': b.id, title: label, 'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
-    },
-      art ? h('img', { class: 'sp-img', src: coverSrc(b.coverId), alt: '', loading: 'lazy' }) : null,
-      h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' })),
-      h('span', { class: 'base', 'aria-hidden': 'true' }),
-      b.status === 'read' ? h('span', { class: 'fin', 'aria-hidden': 'true' }) : null);
-    styleBook(btn, b);
-    btn.style.setProperty('--w', w + 'px');
-    btn.style.setProperty('--h', hh + 'px');
-    btn.style.setProperty('--fs', Math.max(13, Math.round(hh * 0.42)) + 'px');
-    btn.style.setProperty('--dx', (((n >>> 5) % 9) - 4) * 4 + 'px');
-    btn.style.setProperty('--rot', ((((n >>> 9) % 9) - 4) * 0.55).toFixed(2) + 'deg');
-    return h('div', { class: 'fwrap' }, kMarker(b, 'side'), btn);
-  }
   /* Covers view: up to 12 books per shelf row. The fewer the books, the more cover shows; the more, the more spine. */
   var ROW_MAX = 12;
   function tiltFor(k) { return Math.round(26 + (Math.min(k, ROW_MAX) - 1) * (50 / (ROW_MAX - 1))); }
   function shelfRows(items) {
     if (view !== 'covers') return [h('div', { class: 'shelfrow' }, shelfItems(items))];
-    var flats = items.filter(function (b) { return b.flat; }), std = items.filter(function (b) { return !b.flat; });
+    var std = items;
     var rows = [];
     for (var i = 0; i < Math.max(std.length, 1); i += ROW_MAX) {
       var chunk = std.slice(i, i + ROW_MAX), k = chunk.length;
       var kids = chunk.map(book3d);
-      if (i + ROW_MAX >= std.length && flats.length) kids = kids.concat(shelfItems(flats));
       var row = h('div', { class: 'shelfrow covers' }, kids);
       row.dataset.n = String(k);
       row.style.setProperty('--rot', tiltFor(k) + 'deg');
@@ -1127,11 +1085,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     });
   }
   function shelfItems(items) {
-    var out = [], flats = [];
-    var per = view === 'covers' ? 4 : 5;
-    items.forEach(function (b) { if (b.flat) flats.push(b); else out.push(view === 'covers' ? book3d(b) : spine(b)); });
-    for (var i = 0; i < flats.length; i += per) out.push(h('div', { class: 'slot' }, h('div', { class: 'pile' }, flats.slice(i, i + per).map(flatBook))));
-    return out;
+    return items.map(function (b) { return view === 'covers' ? book3d(b) : spine(b); });
   }
 
   function renderStats() {
@@ -1645,8 +1599,6 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     statusIn.value = b.status === 'reading' || b.status === 'read' ? b.status : 'unread';
     var kindleIn = h('input', { id: 'eKindle', type: 'checkbox' });
     kindleIn.checked = !!b.inKindle;
-    var flatIn = h('input', { id: 'eFlat', type: 'checkbox' });
-    flatIn.checked = !!b.flat;
     var newSpine = null, dropSpine = false;
 
     var coverCol = [];
@@ -1723,7 +1675,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       try {
         var patch = { title: titleIn.value.trim(), author: author, status: statusIn.value, inKindle: kindleIn.checked };
         if (statusIn.value === 'read') { if (b.status !== 'read' || !b.finishedAt) patch.finishedAt = Date.now(); } else patch.finishedAt = null;
-        patch.flat = flatIn.checked;
+        patch.flat = false;
         patch.series = seriesIn.value.trim();
         patch.seriesNo = seriesNoIn.value.trim();
         if (newFile) { var up = await uploadCover(newFile); patch.coverId = up.id; patch.color = up.color; patch.accent = up.accent; patch.dh = up.dh; }
@@ -1750,7 +1702,6 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       h('label', { class: 'field' }, h('span', { text: 'Number in series' }), seriesNoIn),
       h('label', { class: 'field' }, h('span', { text: 'Reading status' }), statusIn),
       h('label', { class: 'chk' }, kindleIn, 'In my Kindle library'),
-      h('label', { class: 'chk' }, flatIn, 'Lay flat in a stack on the shelf'),
       msg,
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Cancel'), saveBtn),
       danger
