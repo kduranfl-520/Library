@@ -313,6 +313,11 @@ select.in { padding-right: 8px; }
 }
 .ph.tinted { border: 0; color: #FFFFFF; font-weight: 700; }
 
+.numrow { display: flex; gap: 4px; margin: -6px 0 10px; }
+.numrow[hidden] { display: none; }
+.numkey { flex: 1 1 0; min-width: 0; height: 38px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: inherit; font: inherit; font-size: 17px; font-weight: 600; }
+.numkey:active { filter: brightness(1.25); }
+
 /* Full cover view */
 .bigcover {
   display: block; margin: 0 auto; max-width: 100%; max-height: 46vh; max-height: 46dvh; width: auto; height: auto;
@@ -485,7 +490,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v45';
+  var APP_VERSION = 'v46';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1471,6 +1476,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       h('h2', { id: 'sheetTitle', text: 'Add books' }),
       h('label', { class: 'field' }, h('span', { text: 'Author' }), authorIn, dl),
       h('label', { class: 'field' }, h('span', { text: 'Series' }), seriesAdd, seriesAddDl),
+      numRow(seriesAdd),
       h('div', { class: 'row' }, pickers),
       hint, list, msg,
       h('div', { class: 'actions' }, cancelBtn, saveBtn)
@@ -1714,6 +1720,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       h('label', { class: 'field' }, h('span', { text: 'Title' }), titleIn),
       h('label', { class: 'field' }, h('span', { text: 'Author' }), authorIn, dl),
       h('label', { class: 'field' }, h('span', { text: 'Series' }), seriesIn, seriesDl),
+      numRow(seriesIn),
       h('label', { class: 'field' }, h('span', { text: 'Number in series' }), seriesNoIn),
       h('label', { class: 'field' }, h('span', { text: 'Reading status' }), statusIn),
       doneLbl,
@@ -1838,6 +1845,26 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   fab.addEventListener('click', function (e) { openAdd(e.currentTarget); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitTitles(shelf); fitPlates(shelf); });
   /* A small clear (x) button inside every text field, including ones that appear in sheets later. */
+  /* Number row under a text field: tap digits without leaving the letter keyboard. */
+  function numRow(input) {
+    var row = h('div', { class: 'numrow', hidden: true });
+    '1234567890'.split('').forEach(function (d) {
+      row.append(h('button', { type: 'button', class: 'numkey', tabindex: '-1', text: d, 'aria-label': 'Type ' + d,
+        onpointerdown: function (e) { e.preventDefault(); },
+        onmousedown: function (e) { e.preventDefault(); },
+        onclick: function (e) {
+          e.preventDefault();
+          var v = input.value, a = input.selectionStart, z = input.selectionEnd;
+          if (a == null) { a = z = v.length; }
+          input.value = v.slice(0, a) + d + v.slice(z);
+          input.setSelectionRange(a + 1, a + 1);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        } }));
+    });
+    input.addEventListener('focus', function () { row.hidden = false; });
+    input.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== input) row.hidden = true; }, 120); });
+    return row;
+  }
   function enhanceClear(root) {
     Array.prototype.forEach.call(root.querySelectorAll ? root.querySelectorAll('input[type=text], input[type=search], input[type=number]') : [], function (inp) {
       if (inp.dataset.clr) return;
