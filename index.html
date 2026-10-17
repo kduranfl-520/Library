@@ -490,7 +490,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v33';
+  var APP_VERSION = 'v34';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1395,7 +1395,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var rbtn = h('button', { class: 'btn rbtn', type: 'button' });
     function sync() {
       var when = cur.finishedAt ? ' on ' + new Date(cur.finishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-      sub.textContent = authorName(b) + (cur.status === 'read' ? ' · Finished' + when : cur.status === 'reading' ? ' · Reading' : '');
+      sub.textContent = authorName(b) + (String(b.series || '').trim() ? ' · ' + String(b.series).trim() : '') + (cur.status === 'read' ? ' · Finished' + when : cur.status === 'reading' ? ' · Reading' : '');
       kbtn.setAttribute('aria-pressed', String(cur.inKindle)); kbtn.textContent = cur.inKindle ? 'In Kindle' : 'Not in Kindle';
       fbtn.setAttribute('aria-pressed', String(cur.status === 'read')); fbtn.textContent = cur.status === 'read' ? 'Finished' : 'Mark as finished';
       rbtn.setAttribute('aria-pressed', String(cur.status === 'reading')); rbtn.textContent = cur.status === 'reading' ? 'Reading now' : 'Start reading';
@@ -1438,7 +1438,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     showSheet([
       media,
       navRow,
-      h('div', { class: 'vmeta' }, h('h2', { id: 'sheetTitle', text: title || 'Untitled' }), sub),
+      h('div', { class: 'vmeta' }, h('h2', { id: 'sheetTitle', text: (title || 'Untitled') + (String(b.seriesNo == null ? '' : b.seriesNo).trim() ? ' - ' + String(b.seriesNo).trim() : '') }), sub),
       h('div', { class: 'toggles' }, kbtn, fbtn, rbtn),
       msg,
       h('div', { class: 'actions' },
