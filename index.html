@@ -133,6 +133,12 @@ h1, h2 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
 }
 select.in { padding-right: 8px; }
 .search { flex: 1 1 240px; min-width: 0; min-height: 38px; }
+.clrwrap { position: relative; display: block; min-width: 0; width: 100%; }
+.clrwrap.clrsearch { flex: 1 1 240px; width: auto; }
+.clrwrap > input { padding-right: 38px; }
+.clrwrap > input::-webkit-search-cancel-button, .clrwrap > input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+.clrbtn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: var(--line); color: var(--muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.clrbtn[hidden] { display: none; }
 .seg { display: flex; flex-wrap: nowrap; gap: 6px; width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .seg::-webkit-scrollbar { display: none; }
 .fold { width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: -2px; }
@@ -463,7 +469,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v23';
+  var APP_VERSION = 'v24';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1611,6 +1617,42 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   });
   fab.addEventListener('click', function (e) { openAdd(e.currentTarget); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitTitles(shelf); fitPlates(shelf); });
+  /* A small clear (x) button inside every text field, including ones that appear in sheets later. */
+  function enhanceClear(root) {
+    Array.prototype.forEach.call(root.querySelectorAll ? root.querySelectorAll('input[type=text], input[type=search], input[type=number]') : [], function (inp) {
+      if (inp.dataset.clr) return;
+      inp.dataset.clr = '1';
+      var wrap = document.createElement('span');
+      wrap.className = 'clrwrap' + (inp.classList.contains('search') ? ' clrsearch' : '');
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'clrbtn'; btn.tabIndex = -1; btn.textContent = '×'; btn.setAttribute('aria-label', 'Clear this field'); btn.hidden = true;
+      btn.addEventListener('pointerdown', function (e) { e.preventDefault(); });
+      btn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        inp.value = ''; btn.hidden = true;
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        try { inp.focus(); } catch (x) {}
+      });
+      inp.parentNode.insertBefore(wrap, inp);
+      wrap.appendChild(inp); wrap.appendChild(btn);
+      btn.hidden = !inp.value;
+    });
+  }
+  function refreshClear() {
+    Array.prototype.forEach.call(document.querySelectorAll('.clrwrap'), function (w) {
+      var i = w.querySelector('input'), b = w.querySelector('.clrbtn');
+      if (i && b) b.hidden = !i.value;
+    });
+  }
+  document.addEventListener('input', function (e) {
+    var w = e.target && e.target.parentNode;
+    if (w && w.classList && w.classList.contains('clrwrap')) { var b = w.querySelector('.clrbtn'); if (b) b.hidden = !e.target.value; }
+  }, true);
+  enhanceClear(document);
+  new MutationObserver(function (muts) {
+    muts.forEach(function (m) { Array.prototype.forEach.call(m.addedNodes, function (n) { if (n.nodeType === 1) enhanceClear(n); }); });
+    refreshClear();
+  }).observe(document.body, { childList: true, subtree: true });
   qEl.addEventListener('input', function () { query = qEl.value; render(); });
   render();
 
