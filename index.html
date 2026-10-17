@@ -193,6 +193,10 @@ select.in { padding-right: 8px; }
   font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
   border-top: 1px solid rgba(0, 0, 0, 0.35); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); position: relative; z-index: 1;
 }
+.subrail.clickable { cursor: pointer; }
+.subrail.clickable .sname::before { display: none; }
+.subrail .schev { flex: none; width: 0; height: 0; margin-right: -4px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid currentColor; transition: transform 0.15s; }
+.subrail.closed .schev { transform: rotate(-90deg); }
 .subrail .sname { margin-right: auto; min-width: 0; overflow-wrap: anywhere; }
 .subrail.done .sname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .subrail .sname::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--brass); vertical-align: 0; }
@@ -478,7 +482,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v28';
+  var APP_VERSION = 'v29';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1047,9 +1051,9 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     viewEl.replaceChildren.apply(viewEl, chips);
     var authorKeys = Array.from(new Set(books.map(function (b) { return norm(b.author); }).filter(Boolean)));
     var openCount = authorKeys.filter(function (k) { return !collapsed.has(k); }).length;
-    foldEl.hidden = authorKeys.length < 2;
+    foldEl.hidden = authorKeys.length < 2 && !books.some(function (b) { return String(b.series || '').trim(); });
     foldEl.replaceChildren(
-      h('button', { class: 'fold-btn', type: 'button', disabled: openCount === authorKeys.length, onclick: function () { collapsed.clear(); saveCollapsed(); render(); } }, 'Expand all'),
+      h('button', { class: 'fold-btn', type: 'button', disabled: collapsed.size === 0, onclick: function () { collapsed.clear(); saveCollapsed(); render(); } }, 'Expand all'),
       h('span', { class: 'fold-sep', 'aria-hidden': 'true', text: '|' }),
       h('button', { class: 'fold-btn', type: 'button', disabled: openCount === 0, onclick: function () { authorKeys.forEach(function (k) { collapsed.add(k); }); saveCollapsed(); render(); } }, 'Collapse all'));
   }
@@ -1164,10 +1168,12 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
                 return cmp(titleKey(ta), titleKey(tb));
               });
               var sdone = seriesIsDone(g.name, sr.name);
-              kids.push(h('div', { class: 'subrail' + (sdone ? ' done' : '') }, h('span', { class: 'sname', text: sr.name }), sdone ? h('span', { class: 'stag', title: 'Series complete' }, h('b', { text: '✓' }), h('span', { class: 'stxt', text: ' COMPLETE' })) : null, h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
-                h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { openAdd(e.currentTarget, { author: g.name, series: sr.name }); } }, '+ Add'),
-                h('button', { class: 'addbtn rmbtn' + (sdone ? ' on' : ''), type: 'button', 'aria-pressed': String(sdone), title: sdone ? 'Series complete. Tap to undo' : 'Mark this series complete', 'aria-label': (sdone ? 'Unmark ' : 'Mark ') + sr.name + ' as complete', onclick: function () { toggleSeriesDone(g.name, sr.name); } }, '✓')));
-              shelfRows(sr.items).forEach(function (r) { kids.push(r); });
+              var sk2 = 's:' + gk + '|' + norm(sr.name), sCol = collapsed.has(sk2);
+              var sToggle = function () { if (collapsed.has(sk2)) collapsed.delete(sk2); else collapsed.add(sk2); saveCollapsed(); render(); };
+              kids.push(h('div', { class: 'subrail clickable' + (sdone ? ' done' : '') + (sCol ? ' closed' : ''), role: 'button', tabindex: '0', 'aria-expanded': String(!sCol), title: sCol ? 'Open this series' : 'Collapse this series', onclick: sToggle, onkeydown: function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sToggle(); } } }, h('span', { class: 'schev', 'aria-hidden': 'true' }), h('span', { class: 'sname', text: sr.name }), sdone ? h('span', { class: 'stag', title: 'Series complete' }, h('b', { text: '✓' }), h('span', { class: 'stxt', text: ' COMPLETE' })) : null, h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
+                h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name, series: sr.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'),
+                h('button', { class: 'addbtn rmbtn' + (sdone ? ' on' : ''), type: 'button', 'aria-pressed': String(sdone), title: sdone ? 'Series complete. Tap to undo' : 'Mark this series complete', 'aria-label': (sdone ? 'Unmark ' : 'Mark ') + sr.name + ' as complete', onclick: function (e) { e.stopPropagation(); toggleSeriesDone(g.name, sr.name); }, onkeydown: function (e) { e.stopPropagation(); } }, '✓')));
+              if (!sCol) shelfRows(sr.items).forEach(function (r) { kids.push(r); });
             });
           }
           nodes.push(h('section', { class: 'case' + (isCol ? ' shut' : '') }, kids));
