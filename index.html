@@ -490,7 +490,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v47';
+  var APP_VERSION = 'v48';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -655,7 +655,12 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
   function norm(s) { return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase(); }
   function authorName(b) { return String(b.author || '').trim() || 'Unknown author'; }
-  function coverSrc(id) { return urlCache.get(id) || ''; }
+  /* A cover is either a saved picture (an id) or a web link kept as the id. Shelf thumbnails use a smaller version of linked pictures. */
+  function isLink(id) { return typeof id === 'string' && /^https?:\/\//.test(id); }
+  function coverSrc(id, small) {
+    if (isLink(id)) return small ? id.replace(/\/\d+x\d+bb\./, '/300x300bb.').replace(/-L\.jpg/, '-M.jpg') : id;
+    return urlCache.get(id) || '';
+  }
 
   function guessTitle(name) {
     var base = name.replace(/\.[^.]+$/, '');
@@ -789,6 +794,12 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     return null;
   }
   async function uploadCover(file) {
+    if (file.linkUrl) {
+      var ls = null, ldh = null;
+      try { ls = await shrink(file); } catch (e) {}
+      try { ldh = await dHash(file); } catch (e) {}
+      return { id: file.linkUrl, color: ls ? ls.color : null, accent: ls ? ls.accent : null, dh: ldh };
+    }
     var sh = await shrink(file);
     var r = await assets.upload(sh.blob, { type: 'image/jpeg' });
     var dh = null; try { dh = await dHash(file); } catch (e) {}
@@ -880,7 +891,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       grid.replaceChildren.apply(grid, good.map(function (c) {
         return h('button', { class: 'pickitem', type: 'button', title: c.label, onclick: async function () {
           if (busy2) return; busy2 = true; setMsg('Saving that cover…');
-          try { var f = await fetchImageFile(c.url, c.label || opts.title); busy2 = false; var keep = await opts.onPick(f); if (keep !== false) close(); else setMsg(''); }
+          try { var f; try { f = await fetchImageFile(c.url, c.label || opts.title); } catch (e0) { f = new File([], 'cover.jpg', { type: 'image/jpeg' }); } f.linkUrl = c.url; busy2 = false; var keep = await opts.onPick(f); if (keep !== false) close(); else setMsg(''); }
           catch (e) { busy2 = false; setMsg('Could not save that one from here. Try another, or use Google Images in Safari.', true); }
         } }, h('img', { src: c.url, alt: c.label || 'Cover' }), h('span', { class: 'pickdim', text: c.w + '×' + c.h }), h('span', { class: 'picksrc', text: c.src }));
       }));
@@ -1014,7 +1025,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var kids = photo
       ? [h('img', { class: 'sp-img', src: coverSrc(b.spineId), alt: '' })]
       : art
-        ? [h('img', { class: 'sp-img', src: coverSrc(b.coverId), alt: '', loading: 'lazy' }), h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' }))]
+        ? [h('img', { class: 'sp-img', src: coverSrc(b.coverId, true), alt: '', loading: 'lazy' }), h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' }))]
         : [h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' }))];
     kids.push(h('span', { class: 'base', 'aria-hidden': 'true' }));
     kids.push(b.status === 'read' ? h('span', { class: 'fin', 'aria-hidden': 'true' }) : null);
@@ -1040,14 +1051,14 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var art = !photo && !!b.coverId;
     var front = h('div', { class: 'bk-front' });
     if (b.coverId) {
-      var im = h('img', { src: coverSrc(b.coverId), alt: '', loading: 'lazy' });
+      var im = h('img', { src: coverSrc(b.coverId, true), alt: '', loading: 'lazy' });
       im.addEventListener('error', function () { im.replaceWith(placeholder(b)); });
       front.append(im);
     } else front.append(placeholder(b));
     var titleEl = function () { return h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' })); };
     var kids = photo
       ? [h('img', { class: 'sp-img', src: coverSrc(b.spineId), alt: '' })]
-      : art ? [h('img', { class: 'sp-img', src: coverSrc(b.coverId), alt: '', loading: 'lazy' }), titleEl()] : [titleEl()];
+      : art ? [h('img', { class: 'sp-img', src: coverSrc(b.coverId, true), alt: '', loading: 'lazy' }), titleEl()] : [titleEl()];
     kids.push(h('span', { class: 'base', 'aria-hidden': 'true' }));
     kids.push(b.status === 'read' ? h('span', { class: 'fin', 'aria-hidden': 'true' }) : null);
     var sp = h('div', { class: 'bk-spine' + (photo ? ' photo' : '') + (art ? ' art' : '') }, kids);
@@ -1403,7 +1414,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             var dh = null; try { dh = await dHash(f); } catch (e) {}
             var dup = dh ? await findDuplicate(dh, staged.filter(function (x) { return x !== s; }), null) : null;
             if (dup) { setMsg('That cover is already ' + (dup.staged ? 'chosen' : 'on your shelf as ' + (String(dup.title || '').trim() || 'a book without a title')) + '.', true); return false; }
-            var u = URL.createObjectURL(f); sheetUrls.push(u);
+            var u = f.linkUrl || URL.createObjectURL(f); sheetUrls.push(u);
             s.file = f; s.url = u; s.dh = dh; renderStaged();
           } });
         } }, 'Find cover');
@@ -1634,7 +1645,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           var dhE = null; try { dhE = await dHash(f); } catch (e) {}
           var dupE = dhE ? await findDuplicate(dhE, [], b.id) : null;
           if (dupE) { setMsg('That cover is already on your shelf' + (String(dupE.title || '').trim() ? ' (' + dupE.title + ')' : '') + '.', true); return false; }
-          newFile = f; var u = URL.createObjectURL(f); sheetUrls.push(u); setThumb(u); setMsg('New cover ready. Save to apply it.');
+          newFile = f; var u = f.linkUrl || URL.createObjectURL(f); sheetUrls.push(u); setThumb(u); setMsg('New cover ready. Save to apply it.');
         } });
       } }, 'Find cover'));
       coverCol.push(h('label', { class: 'btn pick' }, b.coverId ? 'Replace cover' : 'Add cover', fileIn));
@@ -1807,7 +1818,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       try {
         for (i = 0; i < withCover.length; i++) {
           var b = withCover[i]; setMsg('Shrinking covers… ' + (i + 1) + ' of ' + withCover.length);
-          var u = coverSrc(b.coverId); if (!u) continue;
+          var u = coverSrc(b.coverId); if (!u || isLink(b.coverId)) continue;
           var old = await (await fetch(u)).blob();
           var sh = await shrink(old);
           if (sh.blob.size >= old.size * 0.9) continue;
@@ -1850,6 +1861,12 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Close'))
     ], from, null);
   }
+
+  /* A linked cover that fails to load just disappears, leaving the title. */
+  document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && isLink(t.getAttribute('src'))) t.style.visibility = 'hidden';
+  }, true);
 
   /* ---------- wiring ---------- */
   /* The keyboard's Done/Go key should only close the keyboard, not save the sheet. */
