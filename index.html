@@ -491,7 +491,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v36';
+  var APP_VERSION = 'v37';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1200,6 +1200,11 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       try { window.scrollTo(0, cur ? Math.max(0, window.scrollY + cur.getBoundingClientRect().top - keepTop) : keepY); } catch (e) {}
     };
     back();
+    /* iOS can nudge the page a moment after layout changes, so re-assert the position briefly, unless you start scrolling. */
+    var tok = ++settleTok, still = true;
+    var stop = function () { still = false; window.removeEventListener('touchstart', stop, true); window.removeEventListener('wheel', stop, true); };
+    window.addEventListener('touchstart', stop, true); window.addEventListener('wheel', stop, true);
+    [0, 60, 180, 350].forEach(function (ms) { setTimeout(function () { if (still && tok === settleTok && scrim.hidden) back(); if (ms === 350) stop(); }, ms); });
     fitTitles(shelf);
     fitPlates(shelf);
     fitCovers(shelf);
@@ -1236,7 +1241,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     books.forEach(function (b) { var n = String(b.series || '').trim(), k = norm(n); if (k && !seen.has(k)) seen.set(k, n); });
     return Array.from(seen.values()).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
   }
-  var anchorKey = null, sheetY = 0, rerendered = false;
+  var anchorKey = null, sheetY = 0, rerendered = false, settleTok = 0;
   function showSheet(nodes, from, focusEl) {
     opener = from || null;
     if (scrim.hidden) { sheetY = window.scrollY; rerendered = false; }
