@@ -201,7 +201,7 @@ select.in { padding-right: 8px; }
 .subrail.done .addbtn { color: #2A1F08; border-color: rgba(42, 31, 8, 0.6); }
 .subrail.done .addbtn.on { background: #2A1F08; border-color: #2A1F08; color: #EBC65A; }
 .addbtn.on { background: #E3B84A; border-color: #E3B84A; color: #2A1F08; }
-@media (max-width: 520px) { .stag .stxt { display: none; } .stag { width: 16px; height: 16px; padding: 0; display: grid; place-items: center; border-radius: 50%; font-size: 10px; } .subrail.done .addbtn:not(.rmbtn) { padding: 0 8px; } .subrail.done .scount { display: none; } .subrail .sname { min-width: 4.5em; } .subrail.done { gap: 8px; padding-left: 20px; padding-right: 14px; } }
+@media (max-width: 520px) { .stag b { display: none; } .stag { font-size: 7px; padding: 3px 5px 2px; letter-spacing: 0.04em; } .subrail.done .addbtn:not(.rmbtn) { padding: 0 8px; } .subrail.done .scount { display: none; } .subrail .sname { min-width: 4.5em; } .subrail.done { gap: 8px; padding-left: 20px; padding-right: 14px; } }
 .stag { font-size: 9px; font-weight: 700; letter-spacing: 0.03em; padding: 2px 6px; line-height: 1.2; flex: none; border-radius: 10px; background: #2A1F08; color: #EBC65A; white-space: nowrap; }
 .subrail .scount { font-size: 12px; font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
 @media (max-width: 520px) { .rail .count .ck { display: none; } }
@@ -478,7 +478,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v27';
+  var APP_VERSION = 'v28';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
