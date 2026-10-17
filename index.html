@@ -318,6 +318,10 @@ select.in { padding-right: 8px; }
 .numkey { flex: 1 1 0; min-width: 0; height: 38px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: inherit; font: inherit; font-size: 17px; font-weight: 600; }
 .numkey:active { filter: brightness(1.25); }
 
+.brokenlist { display: grid; gap: 10px; margin: 8px 0; }
+.brokenrow { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.brokentxt { display: grid; gap: 2px; }
+
 /* Full cover view */
 .bigcover {
   display: block; margin: 0 auto; max-width: 100%; max-height: 46vh; max-height: 46dvh; width: auto; height: auto;
@@ -490,7 +494,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v48';
+  var APP_VERSION = 'v49';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1811,6 +1815,17 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       try { setMsg('Restoring…'); var n = await store.importAll(JSON.parse(await f.text())); setMsg('Restored ' + n + ' books.'); }
       catch (e) { setMsg(e && e.message ? e.message : 'Could not read that file.', true); }
     });
+    var linkBtn = h('button', { class: 'btn', type: 'button', onclick: async function () {
+      linkBtn.disabled = true; setMsg('Checking linked covers…');
+      try {
+        var r = await findBrokenLinks(function (n, t) { setMsg('Checking linked covers… ' + n + ' of ' + t); });
+        if (!r.total) setMsg('No linked covers yet.');
+        else if (r.down) setMsg('Most covers failed, so you may be offline. Try again later.', true);
+        else if (!r.bad.length) { setMsg('All ' + plural(r.total, 'linked cover') + ' load fine.'); try { localStorage.setItem(LINKCHECK_KEY, String(Date.now())); } catch (e) {} }
+        else { try { localStorage.setItem(LINKCHECK_KEY, String(Date.now())); } catch (e) {} openBrokenCovers(r.bad); }
+      } catch (e) { setMsg('Could not check.', true); }
+      linkBtn.disabled = false;
+    } }, 'Check linked covers');
     var shrinkBtn = h('button', { class: 'btn', type: 'button', onclick: async function () {
       if (!db || !assets) return;
       shrinkBtn.disabled = true;
@@ -1856,6 +1871,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         var r = await checkForUpdate(true);
         setMsg(r === 'current' ? 'You have the latest version.' : r === 'offline' ? 'Could not check. Are you online?' : r === 'updating' ? 'Updating…' : 'Could not tell. Try again in a minute.');
       } }, 'Check for update')),
+      h('p', { class: 'hint', text: 'Covers found online are kept as web links. The app checks them once a day when you open it. You can also check now.' }),
+      h('div', { class: 'row' }, linkBtn),
       h('p', { class: 'hint', text: 'Covers are saved small to keep your phone light. This shrinks any older, bigger covers already saved.' }),
       h('div', { class: 'row' }, shrinkBtn),
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Close'))
@@ -1867,6 +1884,73 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var t = e.target;
     if (t && t.tagName === 'IMG' && isLink(t.getAttribute('src'))) t.style.visibility = 'hidden';
   }, true);
+
+/* ---------- broken cover links ---------- */
+  var LINKCHECK_KEY = 'lib-linkcheck-at', linkCheckBusy = false;
+  function linkLoads(url) {
+    return new Promise(function (res) {
+      var im = new Image(), t = setTimeout(function () { im.src = ''; res(true); }, 15000);
+      im.onload = function () { clearTimeout(t); res(true); };
+      im.onerror = function () { clearTimeout(t); res(false); };
+      im.src = url;
+    });
+  }
+  /* Tests every linked cover. Slow connections are not counted as broken; if most fail the network is assumed down. */
+  async function findBrokenLinks(onProgress) {
+    var list = books.filter(function (b) { return isLink(b.coverId); }), bad = [], i = 0, n = 0;
+    async function worker() {
+      while (i < list.length) {
+        var b = list[i++], ok = await linkLoads(coverSrc(b.coverId, true));
+        if (!ok) bad.push(b);
+        n++; if (onProgress && n % 10 === 0) onProgress(n, list.length);
+      }
+    }
+    await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+    return { total: list.length, bad: bad, down: bad.length > 5 && bad.length > list.length * 0.5 };
+  }
+  async function checkLinkedCovers() {
+    if (linkCheckBusy || !db || (navigator.onLine === false)) return;
+    var last = 0; try { last = parseInt(localStorage.getItem(LINKCHECK_KEY), 10) || 0; } catch (e) {}
+    if (Date.now() - last < 86400000) return;
+    linkCheckBusy = true;
+    try {
+      var r = await findBrokenLinks();
+      if (r.down) return;
+      try { localStorage.setItem(LINKCHECK_KEY, String(Date.now())); } catch (e) {}
+      if (r.bad.length && scrim.hidden) openBrokenCovers(r.bad);
+    } finally { linkCheckBusy = false; }
+  }
+  function openBrokenCovers(list) {
+    var pending = list.slice();
+    function draw() {
+      var rows = pending.map(function (b) {
+        var title = String(b.title || '').trim() || 'Untitled', row;
+        function gone() { pending = pending.filter(function (x) { return x.id !== b.id; }); draw(); }
+        row = h('div', { class: 'brokenrow' },
+          h('div', { class: 'brokentxt' }, h('strong', { text: title }), h('span', { class: 'by', text: authorName(b) })),
+          h('div', { class: 'row' },
+            h('button', { class: 'btn primary', type: 'button', onclick: function () {
+              openCoverPicker({ title: title, author: authorName(b), onPick: async function (f) {
+                var up = await uploadCover(f);
+                await db.doc('books/' + b.id).update({ coverId: up.id, color: up.color, accent: up.accent, dh: up.dh });
+                gone();
+              } });
+            } }, 'Find new cover'),
+            h('button', { class: 'btn', type: 'button', onclick: async function () {
+              try { await db.doc('books/' + b.id).update({ coverId: null, color: null, accent: null, dh: null }); gone(); } catch (e) {}
+            } }, 'Remove cover')));
+        return row;
+      });
+      var closeB = h('button', { class: 'btn', type: 'button', onclick: closeSheet }, pending.length ? 'Later' : 'Done');
+      showSheet([
+        h('h2', { id: 'sheetTitle', text: pending.length ? plural(pending.length, 'cover') + ' stopped loading' : 'All fixed' }),
+        h('p', { class: 'hint', text: pending.length ? 'These pictures could not be loaded from the web. Find a new one, or remove the cover and keep the book. I will check again tomorrow.' : 'Every broken cover has been handled.' }),
+        h('div', { class: 'brokenlist' }, rows),
+        h('div', { class: 'actions' }, closeB)
+      ], null, closeB);
+    }
+    draw();
+  }
 
   /* ---------- wiring ---------- */
   /* The keyboard's Done/Go key should only close the keyboard, not save the sheet. */
@@ -1945,6 +2029,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   qEl.addEventListener('input', function () { query = qEl.value; render(); });
   render();
 
+  var linkCheckStarted = false;
   (async function init() {
     try { store = await localStore(); db = store.db; assets = store.assets; } catch (e) { db = null; assets = null; }
     if (!db) {
@@ -1960,6 +2045,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       seriesMeta = all.filter(function (o) { return o.seriesMeta || o.authorMeta; });
       emptyShelves = all.filter(function (o) { return o.shelfOnly; });
       loaded = true; storeProblem = ''; render();
+      if (!linkCheckStarted) { linkCheckStarted = true; setTimeout(checkLinkedCovers, 3000); }
     }, function (err) {
       loaded = true;
       storeProblem = err && err.code === 'revoked' ? 'Could not read your saved books. Reload the page to try again.' : 'Could not load your books. Reload the page to try again.';
