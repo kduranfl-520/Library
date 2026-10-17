@@ -281,7 +281,8 @@ select.in { padding-right: 8px; }
   position: absolute; z-index: 3; top: 2px; left: 50%; width: 34px; height: 28px; margin-left: -17px; padding: 0; border: 0;
   background: none; display: grid; place-items: center; cursor: pointer;
 }
-.kd { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rail-fg); background: transparent; opacity: 0.5; }
+.kd { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rail-fg); background: transparent; opacity: 0; }
+/* Not in Kindle: the circle is hidden (the spot is still tappable to switch it on). */
 .ktop[aria-pressed="true"] .kd { background: var(--kindle); border-color: #FFFFFF; opacity: 1; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
 /* A black stripe at the foot of each book keeps the finished marker visible. */
 .base { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; height: 24px; background: #0E0E10; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
@@ -469,7 +470,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v24';
+  var APP_VERSION = 'v25';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
