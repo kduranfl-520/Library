@@ -459,6 +459,15 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   display: grid; grid-template-columns: 44px minmax(0, 1fr) 36px; gap: 10px; align-items: start;
   padding: 10px; border: 1px solid var(--line); border-radius: 10px;
 }
+.pickscrim { z-index: 80; }
+.pickpanel { max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 16px); }
+.pickbar { display: flex; gap: 8px; }
+.pickbar .clrwrap { flex: 1 1 auto; width: auto; }
+.pickgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pickitem { position: relative; padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface-2); cursor: pointer; aspect-ratio: 2 / 3; display: block; }
+.pickitem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pickdim { position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 6px; background: rgba(0, 0, 0, 0.72); color: #fff; font-size: 10px; font-weight: 600; }
+.picksrc { position: absolute; right: 4px; top: 4px; padding: 1px 5px; border-radius: 6px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 9px; }
 .thumb { width: 44px; aspect-ratio: 2 / 3; border-radius: 4px; overflow: hidden; background: var(--surface-2); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .thumb .ph { padding: 2px; font-size: 9px; border-radius: 4px; }
@@ -496,7 +505,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v40';
+  var APP_VERSION = 'v41';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -796,6 +805,111 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var r = await assets.upload(sh.blob, { type: 'image/jpeg' });
     var dh = null; try { dh = await dHash(file); } catch (e) {}
     return { id: r.id, color: sh.color, accent: sh.accent, dh: dh };
+  }
+
+  /* ---------- find a cover online ---------- */
+  function withTimeout(promise, ms) {
+    return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timeout')); }, ms); promise.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); });
+  }
+  function getJson(url) { return withTimeout(fetch(url).then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); }), 9000); }
+  /* Each result lists image addresses from biggest to smallest; the picture that loads first is used. */
+  async function searchCovers(title, author) {
+    var q = (title + ' ' + author).trim(), out = [];
+    var jobs = [
+      getJson('https://itunes.apple.com/search?media=ebook&entity=ebook&limit=12&term=' + encodeURIComponent(q)).then(function (j) {
+        (j.results || []).forEach(function (r) {
+          var a = r.artworkUrl100 || r.artworkUrl60; if (!a) return;
+          out.push({ src: 'Apple Books', label: r.trackName || '', urls: [a.replace(/\/\d+x\d+bb\./, '/1400x1400bb.'), a.replace(/\/\d+x\d+bb\./, '/600x600bb.'), a] });
+        });
+      }),
+      getJson('https://openlibrary.org/search.json?limit=12&fields=title,author_name,cover_i&q=' + encodeURIComponent(q)).then(function (j) {
+        (j.docs || []).forEach(function (d) {
+          if (!d.cover_i) return;
+          out.push({ src: 'Open Library', label: d.title || '', urls: ['https://covers.openlibrary.org/b/id/' + d.cover_i + '-L.jpg', 'https://covers.openlibrary.org/b/id/' + d.cover_i + '-M.jpg'] });
+        });
+      }),
+      getJson('https://www.googleapis.com/books/v1/volumes?maxResults=12&printType=books&q=' + encodeURIComponent(q)).then(function (j) {
+        (j.items || []).forEach(function (it) {
+          var v = it.volumeInfo || {}, im = v.imageLinks || {}, base = im.thumbnail || im.smallThumbnail; if (!base) return;
+          base = base.replace('http://', 'https://').replace('&edge=curl', '');
+          out.push({ src: 'Google Books', label: v.title || '', urls: [base.replace(/zoom=\d/, 'zoom=0'), base.replace(/zoom=\d/, 'zoom=3'), base] });
+        });
+      })
+    ];
+    await Promise.all(jobs.map(function (p) { return p.catch(function () {}); }));
+    return out;
+  }
+  function loadFirst(urls) {
+    return new Promise(function (res) {
+      var i = 0;
+      (function next() {
+        if (i >= urls.length) return res(null);
+        var u = urls[i++], im = new Image();
+        var t = setTimeout(function () { im.onload = im.onerror = null; next(); }, 9000);
+        im.onload = function () { clearTimeout(t); if (im.naturalWidth < 20) next(); else res({ url: u, w: im.naturalWidth, h: im.naturalHeight }); };
+        im.onerror = function () { clearTimeout(t); next(); };
+        im.src = u;
+      })();
+    });
+  }
+  async function fetchImageFile(url, name) {
+    var blob = null;
+    try { var r = await withTimeout(fetch(url), 15000); if (r.ok) blob = await r.blob(); } catch (e) {}
+    if (!blob) {
+      blob = await new Promise(function (res) {
+        var im = new Image(); im.crossOrigin = 'anonymous';
+        im.onload = function () { try { var c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); c.toBlob(function (b) { res(b); }, 'image/jpeg', 0.92); } catch (e) { res(null); } };
+        im.onerror = function () { res(null); }; im.src = url;
+      });
+    }
+    if (!blob || !blob.size) throw new Error('save');
+    return new File([blob], (name || 'cover') + '.jpg', { type: blob.type || 'image/jpeg' });
+  }
+  function openCoverPicker(opts) {
+    var layer = h('div', { class: 'scrim pickscrim', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Find a cover' });
+    var panel = h('div', { class: 'sheet pickpanel' });
+    layer.append(panel);
+    var qIn = h('input', { class: 'in', type: 'text', autocomplete: 'off', placeholder: 'Title and author', value: ((opts.title || '') + ' ' + (opts.author || '')).trim() });
+    var grid = h('div', { class: 'pickgrid' });
+    var msg = h('p', { class: 'msg', role: 'status' });
+    var token = 0, busy2 = false;
+    function setMsg(t, err) { msg.textContent = t || ''; msg.className = 'msg' + (err ? ' err' : ''); }
+    function close() { token++; layer.remove(); if (opts.onClose) opts.onClose(); }
+    async function run() {
+      var my = ++token, q = qIn.value.trim();
+      if (!q) { setMsg('Type a title first.', true); return; }
+      grid.replaceChildren(); setMsg('Searching…');
+      var found = await searchCovers(q, '');
+      if (my !== token) return;
+      if (!found.length) { setMsg('Nothing came back. Check your connection, change the words, or try Google Images in Safari.', true); return; }
+      setMsg('Found ' + plural(found.length, 'result') + '. Checking picture sizes…');
+      var loaded = await Promise.all(found.map(function (f) { return loadFirst(f.urls).then(function (r) { return r ? Object.assign({}, f, r) : null; }); }));
+      if (my !== token) return;
+      var seen = new Set();
+      var good = loaded.filter(function (x) { if (!x || x.w < 120 || seen.has(x.url)) return false; seen.add(x.url); return true; }).sort(function (a, b) { return b.w * b.h - a.w * a.h; });
+      if (!good.length) { setMsg('No usable pictures were found. Try different words, or Google Images in Safari.', true); return; }
+      setMsg('Tap a cover to use it. Biggest first.');
+      grid.replaceChildren.apply(grid, good.map(function (c) {
+        return h('button', { class: 'pickitem', type: 'button', title: c.label, onclick: async function () {
+          if (busy2) return; busy2 = true; setMsg('Saving that cover…');
+          try { var f = await fetchImageFile(c.url, c.label || opts.title); busy2 = false; var keep = await opts.onPick(f); if (keep !== false) close(); else setMsg(''); }
+          catch (e) { busy2 = false; setMsg('Could not save that one from here. Try another, or use Google Images in Safari.', true); }
+        } }, h('img', { src: c.url, alt: c.label || 'Cover' }), h('span', { class: 'pickdim', text: c.w + '×' + c.h }), h('span', { class: 'picksrc', text: c.src }));
+      }));
+    }
+    qIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); qIn.blur(); run(); } });
+    var safari = h('a', { class: 'btn', target: '_blank', rel: 'noopener', text: 'Google Images in Safari' });
+    function setSafari() { safari.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(qIn.value.trim() + ' book cover'); }
+    qIn.addEventListener('input', setSafari); setSafari();
+    panel.append(
+      h('h2', { text: 'Find a cover' }),
+      h('div', { class: 'pickbar' }, qIn, h('button', { class: 'btn primary', type: 'button', onclick: run }, 'Search')),
+      msg, grid,
+      h('div', { class: 'actions' }, safari, h('button', { class: 'btn', type: 'button', onclick: close }, 'Cancel'))
+    );
+    document.body.append(layer);
+    layer.addEventListener('mousedown', function (e) { if (e.target === layer) close(); });
+    run();
   }
 
   /* ---------- shelf ---------- */
@@ -1321,7 +1435,17 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           if (s.url) { try { URL.revokeObjectURL(s.url); } catch (e) {} }
           staged.splice(staged.indexOf(s), 1); renderStaged();
         } }, '×');
-        return h('div', { class: 'srow' }, thumb, h('div', { class: 'scol' }, t, h('label', { class: 'chk' }, k, 'In Kindle')), rm);
+        var find = s.file ? null : h('button', { class: 'btn', type: 'button', onclick: function () {
+          if (saving) return;
+          openCoverPicker({ title: s.title, author: authorIn.value, onPick: async function (f) {
+            var dh = null; try { dh = await dHash(f); } catch (e) {}
+            var dup = dh ? await findDuplicate(dh, staged.filter(function (x) { return x !== s; }), null) : null;
+            if (dup) { setMsg('That cover is already ' + (dup.staged ? 'chosen' : 'on your shelf as ' + (String(dup.title || '').trim() || 'a book without a title')) + '.', true); return false; }
+            var u = URL.createObjectURL(f); sheetUrls.push(u);
+            s.file = f; s.url = u; s.dh = dh; renderStaged();
+          } });
+        } }, 'Find cover');
+        return h('div', { class: 'srow' }, thumb, h('div', { class: 'scol' }, t, find, h('label', { class: 'chk' }, k, 'In Kindle')), rm);
       }));
       saveBtn.textContent = staged.length ? 'Add ' + plural(staged.length, 'book') : 'Add shelf only';
       saveBtn.disabled = saving;
@@ -1471,6 +1595,16 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       h('div', { class: 'toggles' }, kbtn, fbtn, rbtn),
       msg,
       h('div', { class: 'actions' },
+        b.coverId || !assets ? null : h('button', { class: 'btn', type: 'button', onclick: function () {
+          openCoverPicker({ title: title, author: authorName(b), onPick: async function (f) {
+            var dh = null; try { dh = await dHash(f); } catch (e) {}
+            var dup = dh ? await findDuplicate(dh, [], b.id) : null;
+            if (dup) { setMsg('That cover is already on your shelf' + (String(dup.title || '').trim() ? ' (' + dup.title + ')' : '') + '.', true); return false; }
+            var up = await uploadCover(f);
+            await db.doc('books/' + b.id).update({ coverId: up.id, color: up.color, accent: up.accent, dh: up.dh });
+            setTimeout(function () { var nb = latest(); openView(nb, from); }, 150);
+          } });
+        } }, 'Find cover'),
         h('button', { class: 'btn', type: 'button', onclick: function () { var f = from, cb = latest(); closeSheet(); openEdit(cb, f); } }, 'Edit details'),
         closeBtn)
     ], from, closeBtn);
@@ -1533,6 +1667,14 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         if (!titleIn.value.trim()) titleIn.value = guessTitle(f.name);
         fileIn.value = '';
       });
+      coverCol.push(h('button', { class: 'btn', type: 'button', onclick: function () {
+        openCoverPicker({ title: titleIn.value, author: authorIn.value, onPick: async function (f) {
+          var dhE = null; try { dhE = await dHash(f); } catch (e) {}
+          var dupE = dhE ? await findDuplicate(dhE, [], b.id) : null;
+          if (dupE) { setMsg('That cover is already on your shelf' + (String(dupE.title || '').trim() ? ' (' + dupE.title + ')' : '') + '.', true); return false; }
+          newFile = f; var u = URL.createObjectURL(f); sheetUrls.push(u); setThumb(u); setMsg('New cover ready. Save to apply it.');
+        } });
+      } }, 'Find cover'));
       coverCol.push(h('label', { class: 'btn pick' }, b.coverId ? 'Replace cover' : 'Add cover', fileIn));
       var spineIn = h('input', { id: 'eSpine', class: 'sr', type: 'file', accept: 'image/*' });
       spineIn.addEventListener('change', function () {
