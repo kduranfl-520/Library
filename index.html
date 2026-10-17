@@ -490,7 +490,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v46';
+  var APP_VERSION = 'v47';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -685,11 +685,14 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       im.src = url;
     });
   }
-  async function shrink(file) {
+  /* Saved covers are kept small (480px, JPEG) so thousands of them stay light on the phone. */
+  var COVER_MAX = 480, COVER_Q = 0.8;
+  async function shrink(file, maxPx, q) {
+    maxPx = maxPx || COVER_MAX; q = q || COVER_Q;
     var src;
     try { src = await createImageBitmap(file); } catch (e) { src = await loadImg(file); }
     var w = src.width || src.naturalWidth, ht = src.height || src.naturalHeight;
-    var s = Math.min(1, 900 / Math.max(w, ht));
+    var s = Math.min(1, maxPx / Math.max(w, ht));
     var c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(ht * s));
     var ctx = c.getContext('2d');
@@ -699,7 +702,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     return new Promise(function (res, rej) {
       c.toBlob(function (b) {
         b ? res({ blob: b, color: look.color, accent: look.accent, w: c.width, h: c.height }) : rej({ friendly: 'Could not process that image.' });
-      }, 'image/jpeg', 0.86);
+      }, 'image/jpeg', q);
     });
   }
   function rgb2hsl(r, g, b) {
@@ -1687,7 +1690,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         patch.seriesNo = seriesNoIn.value.trim();
         if (newFile) { var up = await uploadCover(newFile); patch.coverId = up.id; patch.color = up.color; patch.accent = up.accent; patch.dh = up.dh; }
         if (newSpine) {
-          var sp = await shrink(newSpine);
+          var sp = await shrink(newSpine, 900, 0.86);
           var sr = await assets.upload(sp.blob, { type: 'image/jpeg' });
           patch.spineId = sr.id; patch.spineRatio = Math.round(sp.w / sp.h * 1000) / 1000;
         } else if (dropSpine) { patch.spineId = null; patch.spineRatio = null; }
@@ -1797,6 +1800,26 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       try { setMsg('Restoring…'); var n = await store.importAll(JSON.parse(await f.text())); setMsg('Restored ' + n + ' books.'); }
       catch (e) { setMsg(e && e.message ? e.message : 'Could not read that file.', true); }
     });
+    var shrinkBtn = h('button', { class: 'btn', type: 'button', onclick: async function () {
+      if (!db || !assets) return;
+      shrinkBtn.disabled = true;
+      var withCover = books.filter(function (b) { return b.coverId; }), done = 0, saved = 0, i;
+      try {
+        for (i = 0; i < withCover.length; i++) {
+          var b = withCover[i]; setMsg('Shrinking covers… ' + (i + 1) + ' of ' + withCover.length);
+          var u = coverSrc(b.coverId); if (!u) continue;
+          var old = await (await fetch(u)).blob();
+          var sh = await shrink(old);
+          if (sh.blob.size >= old.size * 0.9) continue;
+          var up = await assets.upload(sh.blob, { type: 'image/jpeg' });
+          await db.doc('books/' + b.id).update({ coverId: up.id });
+          try { await assets.delete(b.coverId); } catch (e1) {}
+          done++; saved += old.size - sh.blob.size;
+        }
+        setMsg(done ? 'Shrunk ' + plural(done, 'cover') + ', freeing about ' + (saved / 1048576).toFixed(1) + ' MB.' : 'Your covers are already small.');
+      } catch (e) { setMsg('Stopped early after ' + plural(done, 'cover') + '. Tap again to continue.', true); }
+      shrinkBtn.disabled = false;
+    } }, 'Shrink saved covers');
     showSheet([
       h('h2', { id: 'sheetTitle', text: 'Back up your library' }),
       h('p', { class: 'hint', text: 'Your books and covers live only on this device. Save a backup file now and then, and keep it somewhere safe like iCloud Drive. If this device or its browser data is ever lost, restore from that file.' }),
@@ -1822,6 +1845,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         var r = await checkForUpdate(true);
         setMsg(r === 'current' ? 'You have the latest version.' : r === 'offline' ? 'Could not check. Are you online?' : r === 'updating' ? 'Updating…' : 'Could not tell. Try again in a minute.');
       } }, 'Check for update')),
+      h('p', { class: 'hint', text: 'Covers are saved small to keep your phone light. This shrinks any older, bigger covers already saved.' }),
+      h('div', { class: 'row' }, shrinkBtn),
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Close'))
     ], from, null);
   }
