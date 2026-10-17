@@ -482,7 +482,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v29';
+  var APP_VERSION = 'v30';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1616,7 +1616,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             var data = await store.exportAll();
             var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
             var a = document.createElement('a'); a.href = URL.createObjectURL(blob); var dt = new Date(), pad = function (n) { return (n < 10 ? '0' : '') + n; };
-            a.download = 'kellys-library-backup-' + dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) + '.json';
+            a.download = 'kellys-library-backup-' + dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) + '-' + pad(dt.getHours() % 12 || 12) + pad(dt.getMinutes()) + (dt.getHours() < 12 ? 'am' : 'pm') + '.json';
             document.body.appendChild(a); a.click(); a.remove();
             setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
             setMsg('Backup saved: ' + plural(data.books.length, 'book') + '.');
