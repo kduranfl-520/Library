@@ -485,7 +485,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v43';
+  var APP_VERSION = 'v44';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1698,7 +1698,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       }
     };
 
-    var doneLbl = h('label', { class: 'chk' }, doneIn, 'Series completed (all books written)');
+    var doneLbl = h('label', { class: 'chk' }, doneIn, 'Series completed');
     var doneTouched = false;
     function syncDone() {
       var sv = seriesIn.value.trim(), au = authorIn.value.trim();
