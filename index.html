@@ -491,7 +491,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v35';
+  var APP_VERSION = 'v36';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1062,9 +1062,9 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var openCount = authorKeys.filter(function (k) { return !collapsed.has(k); }).length;
     foldEl.hidden = authorKeys.length < 2 && !books.some(function (b) { return String(b.series || '').trim(); });
     foldEl.replaceChildren(
-      h('button', { class: 'fold-btn', type: 'button', disabled: collapsed.size === 0, onclick: function () { collapsed.clear(); saveCollapsed(); render(); } }, 'Expand all'),
+      h('button', { class: 'fold-btn', type: 'button', disabled: collapsed.size === 0, onclick: function () { anchorKey = null; collapsed.clear(); saveCollapsed(); render(); } }, 'Expand all'),
       h('span', { class: 'fold-sep', 'aria-hidden': 'true', text: '|' }),
-      h('button', { class: 'fold-btn', type: 'button', disabled: openCount === 0, onclick: function () { authorKeys.forEach(function (k) { collapsed.add(k); }); saveCollapsed(); render(); } }, 'Collapse all'));
+      h('button', { class: 'fold-btn', type: 'button', disabled: openCount === 0, onclick: function () { anchorKey = null; authorKeys.forEach(function (k) { collapsed.add(k); }); saveCollapsed(); render(); } }, 'Collapse all'));
   }
 
   /* Shrink each title until all of it fits on its spine. */
@@ -1147,6 +1147,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           });
           var gk = norm(g.name), isCol = collapsed.has(gk);
           var toggle = function () {
+            anchorKey = gk;
             if (collapsed.has(gk)) collapsed.delete(gk); else collapsed.add(gk);
             saveCollapsed(); render();
           };
@@ -1178,7 +1179,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
               });
               var sdone = seriesIsDone(g.name, sr.name);
               var sk2 = 's:' + gk + '|' + norm(sr.name), sCol = collapsed.has(sk2);
-              var sToggle = function () { if (collapsed.has(sk2)) collapsed.delete(sk2); else collapsed.add(sk2); saveCollapsed(); render(); };
+              var sToggle = function () { anchorKey = gk; if (collapsed.has(sk2)) collapsed.delete(sk2); else collapsed.add(sk2); saveCollapsed(); render(); };
               kids.push(h('div', { class: 'subrail clickable' + (sdone ? ' done' : '') + (sCol ? ' closed' : ''), role: 'button', tabindex: '0', 'aria-expanded': String(!sCol), title: sCol ? 'Open this series' : 'Collapse this series', onclick: sToggle, onkeydown: function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sToggle(); } } }, h('span', { class: 'schev', 'aria-hidden': 'true' }), h('span', { class: 'sname', text: sr.name }), sdone ? h('span', { class: 'stag', title: 'Series complete' }, h('b', { text: '✓' }), h('span', { class: 'stxt', text: ' COMPLETE' })) : null, h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
                 h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name, series: sr.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'),
                 h('button', { class: 'addbtn rmbtn' + (sdone ? ' on' : ''), type: 'button', 'aria-pressed': String(sdone), title: sdone ? 'Series complete. Tap to undo' : 'Mark this series complete', 'aria-label': (sdone ? 'Unmark ' : 'Mark ') + sr.name + ' as complete', onclick: function (e) { e.stopPropagation(); toggleSeriesDone(g.name, sr.name); }, onkeydown: function (e) { e.stopPropagation(); } }, '✓')));
