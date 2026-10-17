@@ -429,6 +429,14 @@ select.in { padding-right: 8px; }
   display: grid; gap: 14px; align-content: start;
 }
 @media (min-width: 640px) { .sheet { border-radius: 16px; padding: 22px; } }
+.vnav { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: -4px; }
+.vnavbtn { min-width: 44px; padding: 0; font-size: 22px; line-height: 1; }
+.vnavbtn:disabled { opacity: 0.3; }
+.vpos { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 70px; text-align: center; }
+@keyframes vinr { from { opacity: 0.3; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+@keyframes vinl { from { opacity: 0.3; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
+.sheet.vin-r > * { animation: vinr 0.22s ease-out; }
+.sheet.vin-l > * { animation: vinl 0.22s ease-out; }
 .sheet h2 { font-size: 22px; font-weight: 700; }
 .field { display: grid; gap: 6px; min-width: 0; }
 .field > span, .lbl { font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -482,7 +490,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v32';
+  var APP_VERSION = 'v33';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -897,7 +905,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     kids.push(b.status === 'read' ? h('span', { class: 'fin', 'aria-hidden': 'true' }) : null);
     var btn = h('button', {
       class: 'spine' + (photo ? ' photo' : '') + (art ? ' photo art' : '') + (title ? '' : ' missing') + (b.status === 'reading' ? ' reading' : ''),
-      type: 'button', title: label, 'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
+      type: 'button', 'data-bid': b.id, title: label, 'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
     }, kids);
     styleBook(btn, b);
     btn.style.setProperty('--w', w + 'px');
@@ -930,7 +938,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var sp = h('div', { class: 'bk-spine' + (photo ? ' photo' : '') + (art ? ' art' : '') }, kids);
     styleBook(sp, b);
     var btn = h('button', {
-      class: 'bk-btn' + (b.status === 'reading' ? ' reading' : ''), type: 'button', title: label,
+      class: 'bk-btn' + (b.status === 'reading' ? ' reading' : ''), type: 'button', 'data-bid': b.id, title: label,
       'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
     }, h('div', { class: 'book3d' }, front, sp));
     btn.style.setProperty('--bh', bh + 'px');
@@ -947,7 +955,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var w = 160 + (n % 5) * 10, hh = 30 + ((n >>> 4) % 4) * 4, art = !!b.coverId;
     var btn = h('button', {
       class: 'flat' + (art ? ' art' : '') + (title ? '' : ' missing'),
-      type: 'button', title: label, 'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
+      type: 'button', 'data-bid': b.id, title: label, 'aria-label': 'Open ' + label + ', ' + stateText(b), onclick: function (e) { openView(b, e.currentTarget); }
     },
       art ? h('img', { class: 'sp-img', src: coverSrc(b.coverId), alt: '', loading: 'lazy' }) : null,
       h('span', { class: 'sp-t' }, h('span', { class: 'sp-ti', text: title || 'Add title' })),
@@ -1231,7 +1239,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     opener = from || null;
     if (scrim.hidden) { sheetY = window.scrollY; rerendered = false; }
     try { var cs = from && from.closest && from.closest('.case'); if (cs && cs.dataset.gk) anchorKey = cs.dataset.gk; } catch (e) {}
-    sheet.replaceChildren.apply(sheet, nodes);
+    sheet.ontouchstart = null; sheet.ontouchend = null; sheet.onkeydown = null;
+    sheet.replaceChildren.apply(sheet, nodes.filter(Boolean));
     scrim.hidden = false;
     sheet.scrollTop = 0;
     setTimeout(function () { sheet.scrollTop = 0; }, 0);
@@ -1365,7 +1374,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   }
 
   /* ---------- full cover view ---------- */
-  function openView(b, from) {
+  function openView(b, from, dir) {
     if (!db) return;
     function latest() { return books.filter(function (x) { return x.id === b.id; })[0] || b; }
     var cur = { inKindle: !!b.inKindle, status: b.status === 'reading' || b.status === 'read' ? b.status : 'unread', finishedAt: b.finishedAt || null };
@@ -1413,8 +1422,22 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
     sheet.onsubmit = function (e) { e.preventDefault(); };
     var closeBtn = h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Close');
+    /* Swipe or tap the arrows to move through the books in shelf order without closing. */
+    var order = Array.prototype.map.call(shelf.querySelectorAll('[data-bid]'), function (el) { return el.getAttribute('data-bid'); });
+    var pos = order.indexOf(b.id);
+    function go(step) {
+      var id = order[pos + step];
+      if (id === undefined || busy.has(b.id)) return;
+      var el = shelf.querySelector('[data-bid="' + id + '"]'), nb = books.filter(function (x) { return x.id === id; })[0];
+      if (nb && el) openView(nb, el, step);
+    }
+    var prevBtn = h('button', { class: 'btn vnavbtn', type: 'button', 'aria-label': 'Previous book', onclick: function () { go(-1); } }, '‹');
+    var nextBtn = h('button', { class: 'btn vnavbtn', type: 'button', 'aria-label': 'Next book', onclick: function () { go(1); } }, '›');
+    prevBtn.disabled = pos <= 0; nextBtn.disabled = pos < 0 || pos >= order.length - 1;
+    var navRow = pos >= 0 && order.length > 1 ? h('div', { class: 'vnav' }, prevBtn, h('span', { class: 'vpos', text: (pos + 1) + ' of ' + order.length }), nextBtn) : null;
     showSheet([
       media,
+      navRow,
       h('div', { class: 'vmeta' }, h('h2', { id: 'sheetTitle', text: title || 'Untitled' }), sub),
       h('div', { class: 'toggles' }, kbtn, fbtn, rbtn),
       msg,
@@ -1422,6 +1445,17 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         h('button', { class: 'btn', type: 'button', onclick: function () { var f = from, cb = latest(); closeSheet(); openEdit(cb, f); } }, 'Edit details'),
         closeBtn)
     ], from, closeBtn);
+    var sx = 0, sy = 0, st = 0;
+    sheet.ontouchstart = function (e) { var t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); };
+    sheet.ontouchend = function (e) {
+      var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.6 && Date.now() - st < 700) go(dx < 0 ? 1 : -1);
+    };
+    sheet.onkeydown = function (e) {
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      if (e.key === 'ArrowLeft') go(-1); else if (e.key === 'ArrowRight') go(1);
+    };
+    if (dir) { sheet.classList.add(dir > 0 ? 'vin-r' : 'vin-l'); setTimeout(function () { sheet.classList.remove('vin-r', 'vin-l'); }, 260); }
   }
 
   /* ---------- edit a book ---------- */
