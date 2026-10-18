@@ -319,6 +319,7 @@ select.in { padding-right: 8px; }
 .numkey { flex: 1 1 0; min-width: 0; height: 38px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: inherit; font: inherit; font-size: 17px; font-weight: 600; }
 .numkey:active { filter: brightness(1.25); }
 
+.chkrow { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .brokenlist { display: grid; gap: 10px; margin: 8px 0; }
 .brokenrow { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
 .brokentxt { display: grid; gap: 2px; }
@@ -495,7 +496,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v57';
+  var APP_VERSION = 'v58';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1457,7 +1458,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             s.file = f; s.url = u; s.dh = dh; renderStaged();
           } });
         } }, 'Find cover');
-        return h('div', { class: 'srow' }, thumb, h('div', { class: 'scol' }, t, no, find, h('label', { class: 'chk' }, k, 'In Kindle'), h('label', { class: 'chk' }, rd, 'Mark as read')), rm);
+        return h('div', { class: 'srow' }, thumb, h('div', { class: 'scol' }, t, no, find, h('div', { class: 'chkrow' }, h('label', { class: 'chk' }, k, 'In Kindle'), h('label', { class: 'chk' }, rd, 'Mark as read'))), rm);
       }));
       saveBtn.textContent = staged.length ? 'Add ' + plural(staged.length, 'book') : 'Add shelf only';
       saveBtn.disabled = saving;
