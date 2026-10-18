@@ -320,6 +320,9 @@ select.in { padding-right: 8px; }
 .numkey:active { filter: brightness(1.25); }
 
 .chkrow { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.carrybar { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); z-index: 70; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #2A1F08; color: #F4E2A8; border: 1px solid #E3B84A; box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5); font-size: 14px; font-weight: 600; }
+.carrybar span { flex: 1 1 auto; }
+.carrying .subrail, .carrying .shelfrow { outline: 2px dashed rgba(227, 184, 74, 0.75); outline-offset: -2px; }
 .dragghost { position: fixed; z-index: 90; width: 84px; pointer-events: none; transform: translate(-50%, -70%) rotate(-4deg); display: grid; gap: 4px; justify-items: center; padding: 6px; border-radius: 8px; background: var(--surface-2, #333); color: inherit; font-size: 11px; font-weight: 600; text-align: center; box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55); border: 1px solid var(--brass, #B89A5A); }
 .dragghost img { width: 100%; max-height: 110px; object-fit: contain; border-radius: 2px; }
 .dragghost span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -503,7 +506,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v62';
+  var APP_VERSION = 'v63';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1383,7 +1386,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     return Array.from(seen.values()).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
   }
   var anchorKey = null, sheetY = 0, rerendered = false, settleTok = 0;
-  var focusKey = null;
+  var focusKey = null, startCarry = function () {};
   /* Adding from a shelf's own + Add keeps that shelf where it is; adding from the round button brings the author's shelf into view. */
   function setAddFocus(author) {
     var fromShelf = false;
@@ -1628,6 +1631,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             setTimeout(function () { var nb = latest(); openView(nb, from); }, 150);
           } });
         } }, 'Find cover'),
+        h('button', { class: 'btn', type: 'button', onclick: function () { var id = b.id; closeSheet(); startCarry(id); } }, 'Move to series'),
         h('button', { class: 'btn', type: 'button', onclick: function () { var f = from, cb = latest(); closeSheet(); openEdit(cb, f); } }, 'Edit details'),
         closeBtn)
     ], from, closeBtn);
@@ -2073,21 +2077,49 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       drag.over = el; if (el) el.classList.add('droptarget');
     }
     function stopScroll() { clearInterval(scrollTimer); scrollTimer = null; }
+    function applyMove(id, over) {
+      var b = books.filter(function (x) { return x.id === id; })[0]; if (!b || !db) return false;
+      var ns = over.dataset.series || '', tc = over.closest('.case'), na = tc ? tc.dataset.author : b.author, tgk = tc ? tc.dataset.gk : norm(b.author);
+      var sameAuthor = norm(na) === norm(b.author);
+      if (sameAuthor && norm(b.series || '') === norm(ns)) return true;
+      anchorKey = tgk;
+      var patch = { series: ns };
+      if (!sameAuthor) patch.author = na;
+      db.doc('books/' + b.id).update(patch).catch(function () {});
+      return true;
+    }
+    /* Tap-to-place: pick a book up, then tap the series or shelf it should go to. No dragging needed. */
+    var carryId = null, carryBar = null;
+    function endCarry() {
+      carryId = null; document.documentElement.classList.remove('carrying');
+      if (carryBar) { carryBar.remove(); carryBar = null; }
+    }
+    startCarry = function (id) {
+      var b = books.filter(function (x) { return x.id === id; })[0]; if (!b) return;
+      endCarry(); carryId = id;
+      document.documentElement.classList.add('carrying');
+      carryBar = h('div', { class: 'carrybar', role: 'status' },
+        h('span', { text: 'Moving “' + (String(b.title || '').trim() || 'Untitled') + '”. Tap a series bar or its books.' }),
+        h('button', { class: 'btn', type: 'button', onclick: endCarry }, 'Cancel'));
+      document.body.appendChild(carryBar);
+    };
+    document.addEventListener('click', function (e) {
+      if (!carryId) return;
+      var el = e.target.closest && e.target.closest('.subrail, .shelfrow');
+      if (!el || !el.closest('.case')) return;
+      if (e.target.closest('button.addbtn')) return;
+      e.preventDefault(); e.stopPropagation();
+      var id = carryId; endCarry(); applyMove(id, el);
+    }, true);
     function end(drop) {
       if (!drag) return;
       var d = drag; drag = null; stopScroll();
       d.ghost.remove(); d.src.classList.remove('dragsrc'); if (d.over) d.over.classList.remove('droptarget');
       document.documentElement.classList.remove('dragging');
       swallow = Date.now() + 500;
-      if (!drop || !d.over || !db) return;
-      var b = books.filter(function (x) { return x.id === d.id; })[0]; if (!b) return;
-      var ns = d.over.dataset.series || '', tc = d.over.closest('.case'), na = tc ? tc.dataset.author : b.author, tgk = tc ? tc.dataset.gk : d.gk;
-      var sameAuthor = norm(na) === norm(b.author);
-      if (sameAuthor && norm(b.series || '') === norm(ns)) return;
-      anchorKey = tgk;
-      var patch = { series: ns };
-      if (!sameAuthor) patch.author = na;
-      db.doc('books/' + b.id).update(patch).catch(function () {});
+      if (!drop) return;
+      if (!d.moved) { startCarry(d.id); return; }
+      if (d.over) applyMove(d.id, d.over);
     }
     function begin(el, x, y) {
       var b = books.filter(function (z) { return z.id === el.dataset.bid; })[0]; if (!b) return;
@@ -2096,7 +2128,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       var ghost = h('div', { class: 'dragghost' }, b.coverId ? h('img', { src: coverSrc(b.coverId, true), alt: '' }) : null, h('span', { text: gt }));
       document.body.appendChild(ghost);
       var cs = el.closest('.case');
-      drag = { id: b.id, gk: cs ? cs.dataset.gk : norm(b.author), ghost: ghost, src: el, over: null };
+      drag = { id: b.id, gk: cs ? cs.dataset.gk : norm(b.author), ghost: ghost, src: el, over: null, moved: false, x0: x, y0: y };
       el.classList.add('dragsrc'); document.documentElement.classList.add('dragging');
       try { navigator.vibrate && navigator.vibrate(15); } catch (e) {}
       move(x, y);
@@ -2109,6 +2141,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     }
     function move(x, y) {
       lastPt = { x: x, y: y };
+      if (Math.abs(x - drag.x0) > 12 || Math.abs(y - drag.y0) > 12) drag.moved = true;
       drag.ghost.style.left = x + 'px'; drag.ghost.style.top = y + 'px';
       mark(targetAt(x, y));
     }
