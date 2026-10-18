@@ -495,7 +495,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v55';
+  var APP_VERSION = 'v56';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1772,7 +1772,6 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       h('label', { class: 'field' }, h('span', { text: 'Title' }), titleIn),
       h('label', { class: 'field' }, h('span', { text: 'Author' }), authorIn, dl),
       h('label', { class: 'field' }, h('span', { text: 'Series' }), seriesIn, seriesDl),
-      numRow(seriesIn),
       h('label', { class: 'field' }, h('span', { text: 'Number in series' }), seriesNoIn),
       h('label', { class: 'field' }, h('span', { text: 'Reading status' }), statusIn),
       doneLbl,
