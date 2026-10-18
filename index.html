@@ -503,7 +503,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v59';
+  var APP_VERSION = 'v60';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1320,7 +1320,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
                 h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name, series: sr.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'),
                 h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Rename ' + sr.name, 'aria-label': 'Rename the series ' + sr.name, onclick: function (e) { e.stopPropagation(); openRenameSeries(e.currentTarget, g, sr); }, onkeydown: function (e) { e.stopPropagation(); } }, '✎'),
                 h('button', { class: 'addbtn rmbtn' + (sdone ? ' on' : ''), type: 'button', 'aria-pressed': String(sdone), title: sdone ? 'Series complete. Tap to undo' : 'Mark this series complete', 'aria-label': (sdone ? 'Unmark ' : 'Mark ') + sr.name + ' as complete', onclick: function (e) { e.stopPropagation(); toggleSeriesDone(g.name, sr.name); }, onkeydown: function (e) { e.stopPropagation(); } }, '✓')));
-              if (!sCol) shelfRows(sr.items).forEach(function (r) { kids.push(r); });
+              if (!sCol) shelfRows(sr.items).forEach(function (r) { r.dataset.series = sr.name; kids.push(r); });
             });
           }
           var writing = writingMatches(g.name).length > 0;
@@ -2049,7 +2049,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   }
 
 /* ---------- drag a book onto a series ---------- */
-  /* Touch and hold a book, then drag it onto a series bar of the same author. Drop it on the author bar to take it out of its series. */
+  /* Touch and hold a book, then drag it onto a series bar of the same author. Drop it on the books of a series or on its bar. Drop it on the author bar or on loose books to take it out of its series. */
   (function () {
     var timer = null, drag = null, sx = 0, sy = 0, swallow = 0, scrollTimer = null, lastPt = null;
     function bookEl(t) { return t && t.closest ? t.closest('[data-bid]') : null; }
@@ -2058,8 +2058,10 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       if (!drag) return null;
       var els = document.elementsFromPoint(x, y);
       for (var i = 0; i < els.length; i++) {
-        var el = els[i].closest && els[i].closest('.subrail, .rail');
-        if (el && el.dataset.gk === drag.gk) return el;
+        var el = els[i].closest && els[i].closest('.subrail, .rail, .shelfrow');
+        if (!el) continue;
+        var cs = el.closest('.case');
+        if ((el.dataset.gk || (cs && cs.dataset.gk)) === drag.gk) return el;
       }
       return null;
     }
@@ -2077,7 +2079,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       swallow = Date.now() + 500;
       if (!drop || !d.over || !db) return;
       var b = books.filter(function (x) { return x.id === d.id; })[0]; if (!b) return;
-      var ns = d.over.classList.contains('subrail') ? d.over.dataset.series : '';
+      var ns = d.over.dataset.series || '';
       if (norm(b.series || '') === norm(ns)) return;
       anchorKey = d.gk;
       db.doc('books/' + b.id).update({ series: ns }).catch(function () {});
