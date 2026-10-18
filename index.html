@@ -503,7 +503,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v61';
+  var APP_VERSION = 'v62';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1325,7 +1325,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           }
           var writing = writingMatches(g.name).length > 0;
           var star = h('button', { class: 'wstar' + (writing ? ' on' : ''), type: 'button', 'aria-pressed': String(writing), title: writing ? 'Still writing. Tap to undo' : 'Mark as still writing', 'aria-label': 'Still writing a series: ' + g.name, onclick: function () { toggleWriting(g.name); } }, '★');
-          nodes.push(h('div', { class: 'casewrap' }, star, h('section', { class: 'case' + (isCol ? ' shut' : ''), 'data-gk': gk }, kids)));
+          nodes.push(h('div', { class: 'casewrap' }, star, h('section', { class: 'case' + (isCol ? ' shut' : ''), 'data-gk': gk, 'data-author': g.name }, kids)));
         });
       }
     }
@@ -2049,19 +2049,21 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   }
 
 /* ---------- drag a book onto a series ---------- */
-  /* Touch and hold a book, then drag it onto a series bar of the same author. Drop it on the books of a series or on its bar. Drop it on the author bar or on loose books to take it out of its series. */
+  /* Touch and hold a book, then drag it onto a series bar or shelf. Dropping on another author's shelf moves the book to that author. Drop it on the books of a series or on its bar. Drop it on the author bar or on loose books to take it out of its series. */
   (function () {
     var timer = null, drag = null, sx = 0, sy = 0, swallow = 0, scrollTimer = null, lastPt = null;
-    function bookEl(t) { return t && t.closest ? t.closest('[data-bid]') : null; }
+    function bookEl(t) {
+      if (!t || !t.closest) return null;
+      var el = t.closest('[data-bid]'); if (el) return el;
+      var sl = t.closest('.slot'); return sl ? sl.querySelector('[data-bid]') : null;
+    }
     function cancelPress() { clearTimeout(timer); timer = null; }
     function targetAt(x, y) {
       if (!drag) return null;
       var els = document.elementsFromPoint(x, y);
       for (var i = 0; i < els.length; i++) {
         var el = els[i].closest && els[i].closest('.subrail, .rail, .shelfrow');
-        if (!el) continue;
-        var cs = el.closest('.case');
-        if ((el.dataset.gk || (cs && cs.dataset.gk)) === drag.gk) return el;
+        if (el && el.closest('.case')) return el;
       }
       return null;
     }
@@ -2079,10 +2081,13 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       swallow = Date.now() + 500;
       if (!drop || !d.over || !db) return;
       var b = books.filter(function (x) { return x.id === d.id; })[0]; if (!b) return;
-      var ns = d.over.dataset.series || '';
-      if (norm(b.series || '') === norm(ns)) return;
-      anchorKey = d.gk;
-      db.doc('books/' + b.id).update({ series: ns }).catch(function () {});
+      var ns = d.over.dataset.series || '', tc = d.over.closest('.case'), na = tc ? tc.dataset.author : b.author, tgk = tc ? tc.dataset.gk : d.gk;
+      var sameAuthor = norm(na) === norm(b.author);
+      if (sameAuthor && norm(b.series || '') === norm(ns)) return;
+      anchorKey = tgk;
+      var patch = { series: ns };
+      if (!sameAuthor) patch.author = na;
+      db.doc('books/' + b.id).update(patch).catch(function () {});
     }
     function begin(el, x, y) {
       var b = books.filter(function (z) { return z.id === el.dataset.bid; })[0]; if (!b) return;
@@ -2098,7 +2103,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       scrollTimer = setInterval(function () {
         if (!drag || !lastPt) return;
         var hd = document.querySelector('.top'), top = (hd ? hd.getBoundingClientRect().bottom : 0) + 30, y2 = lastPt.y;
-        if (y2 < top) window.scrollBy(0, -Math.min(18, (top - y2) / 3 + 4)); else if (y2 > window.innerHeight - 70) window.scrollBy(0, Math.min(18, (y2 - (window.innerHeight - 70)) / 3 + 4));
+        if (y2 < top + 40) window.scrollBy(0, -Math.min(26, (top + 40 - y2) / 2 + 6)); else if (y2 > window.innerHeight - 130) window.scrollBy(0, Math.min(26, (y2 - (window.innerHeight - 130)) / 2 + 6));
         mark(targetAt(lastPt.x, lastPt.y));
       }, 30);
     }
