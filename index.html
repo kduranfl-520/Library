@@ -494,7 +494,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v49';
+  var APP_VERSION = 'v50';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -662,7 +662,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
   /* A cover is either a saved picture (an id) or a web link kept as the id. Shelf thumbnails use a smaller version of linked pictures. */
   function isLink(id) { return typeof id === 'string' && /^https?:\/\//.test(id); }
   function coverSrc(id, small) {
-    if (isLink(id)) return small ? id.replace(/\/\d+x\d+bb\./, '/300x300bb.').replace(/-L\.jpg/, '-M.jpg') : id;
+    if (isLink(id)) return small ? id.replace(/(m\.media-amazon\.com\/images\/I\/[^\/.]+)\.(jpg|png)$/i, '$1._SL300_.$2').replace(/\/\d+x\d+bb\./, '/300x300bb.').replace(/-L\.jpg/, '-M.jpg') : id;
     return urlCache.get(id) || '';
   }
 
@@ -904,9 +904,26 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var safari = h('a', { class: 'btn', target: '_blank', rel: 'noopener', text: 'Google Images in Safari' });
     function setSafari() { safari.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(qIn.value.trim() + ' book cover'); }
     qIn.addEventListener('input', setSafari); setSafari();
+    /* Paste an image address (for example from Amazon). Amazon's size codes are removed to get the full-size picture. */
+    var linkIn = h('input', { class: 'in', type: 'text', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', placeholder: 'Or paste an image link' });
+    async function useLink() {
+      var raw = linkIn.value.trim();
+      if (!/^https?:\/\//i.test(raw)) { setMsg('Paste a link that starts with http.', true); return; }
+      if (busy2) return; busy2 = true; setMsg('Checking that link…');
+      var full = raw.replace(/(\/images\/I\/[^\/._]+)\._[^\/]*_\.(jpg|jpeg|png|webp)/i, '$1.$2');
+      var got = await loadFirst(full === raw ? [raw] : [full, raw]);
+      if (!got) { busy2 = false; setMsg('That link is not a picture. Touch and hold the cover and choose Copy Link or Copy Image Address.', true); return; }
+      try {
+        var f; try { f = await fetchImageFile(got.url, opts.title); } catch (e0) { f = new File([], 'cover.jpg', { type: 'image/jpeg' }); }
+        f.linkUrl = got.url; busy2 = false;
+        var keep = await opts.onPick(f); if (keep !== false) close(); else setMsg('');
+      } catch (e) { busy2 = false; setMsg('Could not use that link.', true); }
+    }
+    linkIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); linkIn.blur(); useLink(); } });
     panel.append(
       h('h2', { text: 'Find a cover' }),
       h('div', { class: 'pickbar' }, qIn, h('button', { class: 'btn primary', type: 'button', onclick: run }, 'Search')),
+      h('div', { class: 'pickbar' }, linkIn, h('button', { class: 'btn', type: 'button', onclick: useLink }, 'Use link')),
       msg, grid,
       h('div', { class: 'actions' }, safari, h('button', { class: 'btn', type: 'button', onclick: close }, 'Cancel'))
     );
