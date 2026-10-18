@@ -322,6 +322,7 @@ select.in { padding-right: 8px; }
 .chkrow { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .carrybar { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); z-index: 70; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #2A1F08; color: #F4E2A8; border: 1px solid #E3B84A; box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5); font-size: 14px; font-weight: 600; }
 .carrybar span { flex: 1 1 auto; }
+[data-bid].picked { outline: 3px solid #E3B84A; outline-offset: 2px; border-radius: 4px; }
 .carrying .subrail, .carrying .shelfrow { outline: 2px dashed rgba(227, 184, 74, 0.75); outline-offset: -2px; }
 .dragghost { position: fixed; z-index: 90; width: 84px; pointer-events: none; transform: translate(-50%, -70%) rotate(-4deg); display: grid; gap: 4px; justify-items: center; padding: 6px; border-radius: 8px; background: var(--surface-2, #333); color: inherit; font-size: 11px; font-weight: 600; text-align: center; box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55); border: 1px solid var(--brass, #B89A5A); }
 .dragghost img { width: 100%; max-height: 110px; object-fit: contain; border-radius: 2px; }
@@ -506,7 +507,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v63';
+  var APP_VERSION = 'v64';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1353,6 +1354,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     fitPlates(shelf);
     fitCovers(shelf);
     fitSeriesNames(shelf);
+    pickedMarker();
   }
   /* Shrink an author's name until it fits on one line in its plate. */
   function fitSeriesNames(root) {
@@ -1386,7 +1388,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     return Array.from(seen.values()).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
   }
   var anchorKey = null, sheetY = 0, rerendered = false, settleTok = 0;
-  var focusKey = null, startCarry = function () {};
+  var focusKey = null, startCarry = function () {}, startSelect = function () {}, pickedMarker = function () {};
   /* Adding from a shelf's own + Add keeps that shelf where it is; adding from the round button brings the author's shelf into view. */
   function setAddFocus(author) {
     var fromShelf = false;
@@ -2088,28 +2090,61 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       db.doc('books/' + b.id).update(patch).catch(function () {});
       return true;
     }
-    /* Tap-to-place: pick a book up, then tap the series or shelf it should go to. No dragging needed. */
-    var carryId = null, carryBar = null;
+    /* Tap-to-place: pick books, then tap the series or shelf they should go to. No dragging needed. */
+    var carryIds = [], phase = '', carryBar = null, barText = null, moveBtn = null;
+    function markPicked() {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-bid].picked'), function (n) { n.classList.remove('picked'); });
+      if (phase !== 'select') return;
+      carryIds.forEach(function (id) { var n = shelf.querySelector('[data-bid="' + id.replace(/["\\]/g, '') + '"]'); if (n) n.classList.add('picked'); });
+    }
+    pickedMarker = markPicked;
     function endCarry() {
-      carryId = null; document.documentElement.classList.remove('carrying');
+      carryIds = []; phase = ''; markPicked();
+      document.documentElement.classList.remove('carrying', 'selecting');
       if (carryBar) { carryBar.remove(); carryBar = null; }
     }
+    function titleOf(id) { var b = books.filter(function (x) { return x.id === id; })[0]; return b ? (String(b.title || '').trim() || 'Untitled') : ''; }
+    function showBar() {
+      if (!carryBar) {
+        barText = h('span', {});
+        moveBtn = h('button', { class: 'btn primary', type: 'button', onclick: function () { if (carryIds.length) { phase = 'place'; markPicked(); document.documentElement.classList.remove('selecting'); document.documentElement.classList.add('carrying'); showBar(); } } }, 'Move');
+        carryBar = h('div', { class: 'carrybar', role: 'status' }, barText, moveBtn, h('button', { class: 'btn', type: 'button', onclick: endCarry }, 'Cancel'));
+        document.body.appendChild(carryBar);
+      }
+      if (phase === 'select') {
+        barText.textContent = carryIds.length ? plural(carryIds.length, 'book') + ' selected. Tap more books, then Move.' : 'Tap books to select them.';
+        moveBtn.hidden = false; moveBtn.disabled = !carryIds.length;
+      } else {
+        barText.textContent = (carryIds.length === 1 ? 'Moving “' + titleOf(carryIds[0]) + '”' : 'Moving ' + plural(carryIds.length, 'book')) + '. Tap a series bar or its books.';
+        moveBtn.hidden = true;
+      }
+    }
     startCarry = function (id) {
-      var b = books.filter(function (x) { return x.id === id; })[0]; if (!b) return;
-      endCarry(); carryId = id;
-      document.documentElement.classList.add('carrying');
-      carryBar = h('div', { class: 'carrybar', role: 'status' },
-        h('span', { text: 'Moving “' + (String(b.title || '').trim() || 'Untitled') + '”. Tap a series bar or its books.' }),
-        h('button', { class: 'btn', type: 'button', onclick: endCarry }, 'Cancel'));
-      document.body.appendChild(carryBar);
+      if (!books.some(function (x) { return x.id === id; })) return;
+      endCarry(); carryIds = [id]; phase = 'place';
+      document.documentElement.classList.add('carrying'); showBar();
+    };
+    startSelect = function (id) {
+      if (!books.some(function (x) { return x.id === id; })) return;
+      endCarry(); carryIds = [id]; phase = 'select';
+      document.documentElement.classList.add('selecting'); showBar(); markPicked();
     };
     document.addEventListener('click', function (e) {
-      if (!carryId) return;
+      if (!phase) return;
+      if (e.target.closest && e.target.closest('.carrybar')) return;
+      if (phase === 'select') {
+        var bk = bookEl(e.target); if (!bk) return;
+        e.preventDefault(); e.stopPropagation();
+        var id = bk.dataset.bid, i = carryIds.indexOf(id);
+        if (i >= 0) carryIds.splice(i, 1); else carryIds.push(id);
+        markPicked(); showBar(); return;
+      }
       var el = e.target.closest && e.target.closest('.subrail, .shelfrow');
       if (!el || !el.closest('.case')) return;
       if (e.target.closest('button.addbtn')) return;
       e.preventDefault(); e.stopPropagation();
-      var id = carryId; endCarry(); applyMove(id, el);
+      var ids = carryIds.slice(); endCarry();
+      ids.forEach(function (x) { applyMove(x, el); });
     }, true);
     function end(drop) {
       if (!drag) return;
@@ -2118,7 +2153,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       document.documentElement.classList.remove('dragging');
       swallow = Date.now() + 500;
       if (!drop) return;
-      if (!d.moved) { startCarry(d.id); return; }
+      if (!d.moved) { startSelect(d.id); return; }
       if (d.over) applyMove(d.id, d.over);
     }
     function begin(el, x, y) {
