@@ -495,7 +495,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v54';
+  var APP_VERSION = 'v55';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1325,6 +1325,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     rerendered = true;
     var keepY = window.scrollY, keepTop = null;
     if (anchorKey) { var old = shelf.querySelector('.case[data-gk="' + anchorKey.replace(/["\\]/g, '') + '"]'); if (old) keepTop = old.getBoundingClientRect().top; }
+    /* After adding books, bring that author's shelf to the top of the screen, just under the header. */
+    if (focusKey) { anchorKey = focusKey; focusKey = null; var hd = document.querySelector('.top'); keepTop = (hd ? hd.offsetHeight : 60) + 10; }
     shelf.replaceChildren.apply(shelf, nodes);
     var back = function () {
       var cur = anchorKey && keepTop !== null ? shelf.querySelector('.case[data-gk="' + anchorKey.replace(/["\\]/g, '') + '"]') : null;
@@ -1373,6 +1375,13 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     return Array.from(seen.values()).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
   }
   var anchorKey = null, sheetY = 0, rerendered = false, settleTok = 0;
+  var focusKey = null;
+  /* Adding from a shelf's own + Add keeps that shelf where it is; adding from the round button brings the author's shelf into view. */
+  function setAddFocus(author) {
+    var fromShelf = false;
+    try { fromShelf = !!(opener && opener.closest && opener.closest('.case')); } catch (e) {}
+    if (fromShelf) anchorKey = norm(author); else focusKey = norm(author);
+  }
   function showSheet(nodes, from, focusEl) {
     opener = from || null;
     if (scrim.hidden) { sheetY = window.scrollY; rerendered = false; }
@@ -1484,6 +1493,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         var k0 = norm(author);
         if (books.concat(emptyShelves).some(function (x) { return norm(x.author) === k0; })) { setMsg('That author already has a shelf.', true); return; }
         saving = true; sheetBusy = true; saveBtn.disabled = true;
+        setAddFocus(author);
         try { await db.collection('books').doc().set({ shelfOnly: true, author: author, createdAt: Date.now() }); sheetBusy = false; saving = false; closeSheet(); }
         catch (err) { saving = false; sheetBusy = false; saveBtn.disabled = false; setMsg(errText(err), true); }
         return;
@@ -1498,6 +1508,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           setMsg('Saving ' + (i + 1) + ' of ' + staged.length + '…');
           saveBtn.textContent = 'Saving ' + (i + 1) + ' of ' + staged.length + '…';
           var up = s.file ? await uploadCover(s.file) : null;
+          if (i === 0) setAddFocus(author);
           var ref = db.collection('books').doc();
           await ref.set({ title: s.title.trim(), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, dh: up ? up.dh : null, inKindle: !!s.inKindle, status: 'unread', series: seriesAdd.value.trim(), seriesNo: String(s.no || '').trim(), createdAt: Date.now() });
           done.push(s);
