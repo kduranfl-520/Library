@@ -320,6 +320,13 @@ select.in { padding-right: 8px; }
 .numkey:active { filter: brightness(1.25); }
 
 .chkrow { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.dragghost { position: fixed; z-index: 90; width: 84px; pointer-events: none; transform: translate(-50%, -70%) rotate(-4deg); display: grid; gap: 4px; justify-items: center; padding: 6px; border-radius: 8px; background: var(--surface-2, #333); color: inherit; font-size: 11px; font-weight: 600; text-align: center; box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55); border: 1px solid var(--brass, #B89A5A); }
+.dragghost img { width: 100%; max-height: 110px; object-fit: contain; border-radius: 2px; }
+.dragghost span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dragsrc { opacity: 0.3; }
+.dragging, .dragging body { user-select: none; -webkit-user-select: none; }
+.droptarget { outline: 2px solid #E3B84A; outline-offset: -2px; filter: brightness(1.25); }
+#shelf [data-bid], #shelf [data-bid] img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .brokenlist { display: grid; gap: 10px; margin: 8px 0; }
 .brokenrow { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
 .brokentxt { display: grid; gap: 2px; }
@@ -496,7 +503,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v58';
+  var APP_VERSION = 'v59';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1276,7 +1283,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             saveCollapsed(); render();
           };
           var kids = [h('div', {
-            class: 'rail clickable' + (isCol ? ' closed' : ''), role: 'button', tabindex: '0', 'aria-expanded': String(!isCol),
+            class: 'rail clickable' + (isCol ? ' closed' : ''), 'data-gk': gk, role: 'button', tabindex: '0', 'aria-expanded': String(!isCol),
             title: isCol ? 'Open this shelf' : 'Collapse this shelf', onclick: toggle,
             onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }
           }, h('span', { class: 'chev', 'aria-hidden': 'true' }), h('h2', authorLinkDoc(g.name) ? { class: 'plate haslink' + (isRd(g) ? ' reading' : isDone(g) ? ' done' : ''), title: 'Open website to check for new books by ' + g.name, onclick: function (e) { e.stopPropagation(); window.open(authorLinkDoc(g.name).link, '_blank', 'noopener'); } } : { class: 'plate' + (isRd(g) ? ' reading' : isDone(g) ? ' done' : '') }, h('span', { class: 'pl', text: g.name })), h('span', { class: 'count' }, plural(g.items.length, 'book'), h('span', { class: 'ck', text: ' · ' + k + ' in Kindle' })),
@@ -1309,7 +1316,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
               var sdone = seriesIsDone(g.name, sr.name);
               var sk2 = 's:' + gk + '|' + norm(sr.name), sCol = collapsed.has(sk2);
               var sToggle = function () { anchorKey = gk; if (collapsed.has(sk2)) collapsed.delete(sk2); else collapsed.add(sk2); saveCollapsed(); render(); };
-              kids.push(h('div', { class: 'subrail clickable' + (sdone ? ' done' : '') + (sCol ? ' closed' : ''), role: 'button', tabindex: '0', 'aria-expanded': String(!sCol), title: sCol ? 'Open this series' : 'Collapse this series', onclick: sToggle, onkeydown: function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sToggle(); } } }, h('span', { class: 'schev', 'aria-hidden': 'true' }), h('span', { class: 'sname', text: sr.name }), sdone ? h('span', { class: 'stag', title: 'Series complete' }, h('b', { text: '✓' }), h('span', { class: 'stxt', text: ' COMPLETE' })) : null, h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
+              kids.push(h('div', { class: 'subrail clickable' + (sdone ? ' done' : '') + (sCol ? ' closed' : ''), 'data-gk': gk, 'data-series': sr.name, role: 'button', tabindex: '0', 'aria-expanded': String(!sCol), title: sCol ? 'Open this series' : 'Collapse this series', onclick: sToggle, onkeydown: function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sToggle(); } } }, h('span', { class: 'schev', 'aria-hidden': 'true' }), h('span', { class: 'sname', text: sr.name }), sdone ? h('span', { class: 'stag', title: 'Series complete' }, h('b', { text: '✓' }), h('span', { class: 'stxt', text: ' COMPLETE' })) : null, h('span', { class: 'scount', text: plural(sr.items.length, 'book') }),
                 h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + sr.name, 'aria-label': 'Add a book to ' + sr.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name, series: sr.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'),
                 h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Rename ' + sr.name, 'aria-label': 'Rename the series ' + sr.name, onclick: function (e) { e.stopPropagation(); openRenameSeries(e.currentTarget, g, sr); }, onkeydown: function (e) { e.stopPropagation(); } }, '✎'),
                 h('button', { class: 'addbtn rmbtn' + (sdone ? ' on' : ''), type: 'button', 'aria-pressed': String(sdone), title: sdone ? 'Series complete. Tap to undo' : 'Mark this series complete', 'aria-label': (sdone ? 'Unmark ' : 'Mark ') + sr.name + ' as complete', onclick: function (e) { e.stopPropagation(); toggleSeriesDone(g.name, sr.name); }, onkeydown: function (e) { e.stopPropagation(); } }, '✓')));
@@ -2040,6 +2047,81 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     }
     draw();
   }
+
+/* ---------- drag a book onto a series ---------- */
+  /* Touch and hold a book, then drag it onto a series bar of the same author. Drop it on the author bar to take it out of its series. */
+  (function () {
+    var timer = null, drag = null, sx = 0, sy = 0, swallow = 0, scrollTimer = null, lastPt = null;
+    function bookEl(t) { return t && t.closest ? t.closest('[data-bid]') : null; }
+    function cancelPress() { clearTimeout(timer); timer = null; }
+    function targetAt(x, y) {
+      if (!drag) return null;
+      var els = document.elementsFromPoint(x, y);
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i].closest && els[i].closest('.subrail, .rail');
+        if (el && el.dataset.gk === drag.gk) return el;
+      }
+      return null;
+    }
+    function mark(el) {
+      if (drag.over === el) return;
+      if (drag.over) drag.over.classList.remove('droptarget');
+      drag.over = el; if (el) el.classList.add('droptarget');
+    }
+    function stopScroll() { clearInterval(scrollTimer); scrollTimer = null; }
+    function end(drop) {
+      if (!drag) return;
+      var d = drag; drag = null; stopScroll();
+      d.ghost.remove(); d.src.classList.remove('dragsrc'); if (d.over) d.over.classList.remove('droptarget');
+      document.documentElement.classList.remove('dragging');
+      swallow = Date.now() + 500;
+      if (!drop || !d.over || !db) return;
+      var b = books.filter(function (x) { return x.id === d.id; })[0]; if (!b) return;
+      var ns = d.over.classList.contains('subrail') ? d.over.dataset.series : '';
+      if (norm(b.series || '') === norm(ns)) return;
+      anchorKey = d.gk;
+      db.doc('books/' + b.id).update({ series: ns }).catch(function () {});
+    }
+    function begin(el, x, y) {
+      var b = books.filter(function (z) { return z.id === el.dataset.bid; })[0]; if (!b) return;
+      var r = el.getBoundingClientRect();
+      var gt = String(b.title || '').trim() || 'Untitled';
+      var ghost = h('div', { class: 'dragghost' }, b.coverId ? h('img', { src: coverSrc(b.coverId, true), alt: '' }) : null, h('span', { text: gt }));
+      document.body.appendChild(ghost);
+      var cs = el.closest('.case');
+      drag = { id: b.id, gk: cs ? cs.dataset.gk : norm(b.author), ghost: ghost, src: el, over: null };
+      el.classList.add('dragsrc'); document.documentElement.classList.add('dragging');
+      try { navigator.vibrate && navigator.vibrate(15); } catch (e) {}
+      move(x, y);
+      scrollTimer = setInterval(function () {
+        if (!drag || !lastPt) return;
+        var hd = document.querySelector('.top'), top = (hd ? hd.getBoundingClientRect().bottom : 0) + 30, y2 = lastPt.y;
+        if (y2 < top) window.scrollBy(0, -Math.min(18, (top - y2) / 3 + 4)); else if (y2 > window.innerHeight - 70) window.scrollBy(0, Math.min(18, (y2 - (window.innerHeight - 70)) / 3 + 4));
+        mark(targetAt(lastPt.x, lastPt.y));
+      }, 30);
+    }
+    function move(x, y) {
+      lastPt = { x: x, y: y };
+      drag.ghost.style.left = x + 'px'; drag.ghost.style.top = y + 'px';
+      mark(targetAt(x, y));
+    }
+    shelf.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      var el = bookEl(e.target); if (!el || drag) return;
+      sx = e.clientX; sy = e.clientY; cancelPress();
+      timer = setTimeout(function () { timer = null; begin(el, sx, sy); }, e.pointerType === 'mouse' ? 250 : 450);
+    });
+    window.addEventListener('pointermove', function (e) {
+      if (drag) { move(e.clientX, e.clientY); return; }
+      if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancelPress();
+    }, { passive: true });
+    window.addEventListener('pointerup', function () { cancelPress(); end(true); }, true);
+    window.addEventListener('pointercancel', function () { cancelPress(); end(false); }, true);
+    document.addEventListener('touchmove', function (e) { if (drag) e.preventDefault(); }, { passive: false });
+    document.addEventListener('contextmenu', function (e) { if (drag || timer || bookEl(e.target)) e.preventDefault(); });
+    document.addEventListener('click', function (e) { if (swallow > Date.now() && bookEl(e.target)) { e.stopPropagation(); e.preventDefault(); } }, true);
+    window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && drag) end(false); });
+  })();
 
   /* ---------- wiring ---------- */
   /* The keyboard's Done/Go key should only close the keyboard, not save the sheet. */
