@@ -503,7 +503,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v60';
+  var APP_VERSION = 'v61';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -2107,18 +2107,34 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       drag.ghost.style.left = x + 'px'; drag.ghost.style.top = y + 'px';
       mark(targetAt(x, y));
     }
+    /* Mouse and pen use pointer events. Touch uses touch events, because iPhone Safari cancels pointer events once a finger moves. */
     shelf.addEventListener('pointerdown', function (e) {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (e.pointerType === 'touch') return;
+      if (e.button !== 0) return;
       var el = bookEl(e.target); if (!el || drag) return;
       sx = e.clientX; sy = e.clientY; cancelPress();
-      timer = setTimeout(function () { timer = null; begin(el, sx, sy); }, e.pointerType === 'mouse' ? 250 : 450);
+      timer = setTimeout(function () { timer = null; begin(el, sx, sy); }, 250);
     });
     window.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch') return;
       if (drag) { move(e.clientX, e.clientY); return; }
       if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancelPress();
     }, { passive: true });
-    window.addEventListener('pointerup', function () { cancelPress(); end(true); }, true);
-    window.addEventListener('pointercancel', function () { cancelPress(); end(false); }, true);
+    window.addEventListener('pointerup', function (e) { if (e.pointerType === 'touch') return; cancelPress(); end(true); }, true);
+    window.addEventListener('pointercancel', function (e) { if (e.pointerType === 'touch') return; cancelPress(); end(false); }, true);
+    shelf.addEventListener('touchstart', function (e) {
+      if (drag || e.touches.length !== 1) { cancelPress(); return; }
+      var el = bookEl(e.target); if (!el) return;
+      var t = e.touches[0]; sx = t.clientX; sy = t.clientY; cancelPress();
+      timer = setTimeout(function () { timer = null; begin(el, sx, sy); }, 450);
+    }, { passive: true });
+    shelf.addEventListener('touchmove', function (e) {
+      var t = e.touches[0]; if (!t) return;
+      if (drag) { e.preventDefault(); move(t.clientX, t.clientY); return; }
+      if (timer && (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10)) cancelPress();
+    }, { passive: false });
+    shelf.addEventListener('touchend', function (e) { cancelPress(); if (drag) { e.preventDefault(); end(true); } }, { passive: false });
+    shelf.addEventListener('touchcancel', function () { cancelPress(); end(false); }, { passive: true });
     document.addEventListener('touchmove', function (e) { if (drag) e.preventDefault(); }, { passive: false });
     document.addEventListener('contextmenu', function (e) { if (drag || timer || bookEl(e.target)) e.preventDefault(); });
     document.addEventListener('click', function (e) { if (swallow > Date.now() && bookEl(e.target)) { e.stopPropagation(); e.preventDefault(); } }, true);
