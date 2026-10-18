@@ -176,6 +176,7 @@ select.in { padding-right: 8px; }
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35); position: relative; z-index: 1;
 }
 .plate .pl { white-space: nowrap; }
+.plate.haslink .pl { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .plate { overflow: hidden; flex: 0 1 auto;
   margin: 0; min-width: 0; padding: 3px 10px 0; height: 24px; box-sizing: border-box; display: inline-flex; align-items: center; line-height: 1; border-radius: 4px; background: var(--brass); color: var(--brass-fg);
   font-size: 15px; font-weight: 700; overflow-wrap: anywhere;
@@ -494,7 +495,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v51';
+  var APP_VERSION = 'v52';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1277,9 +1278,8 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
             class: 'rail clickable' + (isCol ? ' closed' : ''), role: 'button', tabindex: '0', 'aria-expanded': String(!isCol),
             title: isCol ? 'Open this shelf' : 'Collapse this shelf', onclick: toggle,
             onkeydown: function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }
-          }, h('span', { class: 'chev', 'aria-hidden': 'true' }), h('h2', { class: 'plate' + (isRd(g) ? ' reading' : isDone(g) ? ' done' : '') }, h('span', { class: 'pl', text: g.name })), h('span', { class: 'count' }, plural(g.items.length, 'book'), h('span', { class: 'ck', text: ' · ' + k + ' in Kindle' })),
+          }, h('span', { class: 'chev', 'aria-hidden': 'true' }), h('h2', authorLinkDoc(g.name) ? { class: 'plate haslink' + (isRd(g) ? ' reading' : isDone(g) ? ' done' : ''), title: 'Open website to check for new books by ' + g.name, onclick: function (e) { e.stopPropagation(); window.open(authorLinkDoc(g.name).link, '_blank', 'noopener'); } } : { class: 'plate' + (isRd(g) ? ' reading' : isDone(g) ? ' done' : '') }, h('span', { class: 'pl', text: g.name })), h('span', { class: 'count' }, plural(g.items.length, 'book'), h('span', { class: 'ck', text: ' · ' + k + ' in Kindle' })),
             h('button', { class: 'addbtn', type: 'button', title: 'Add a book to ' + g.name, 'aria-label': 'Add a book to ' + g.name, onclick: function (e) { e.stopPropagation(); openAdd(e.currentTarget, { author: g.name }); }, onkeydown: function (e) { e.stopPropagation(); } }, '+ Add'),
-            authorLinkDoc(g.name) ? h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Check for new books by ' + g.name, 'aria-label': 'Open website to check for new books by ' + g.name, onclick: function (e) { e.stopPropagation(); window.open(authorLinkDoc(g.name).link, '_blank', 'noopener'); }, onkeydown: function (e) { e.stopPropagation(); } }, '↗') : null,
             h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Edit ' + g.name, 'aria-label': 'Edit ' + g.name, onclick: function (e) { e.stopPropagation(); openRenameShelf(e.currentTarget, g); }, onkeydown: function (e) { e.stopPropagation(); } }, '✎'),
             h('button', { class: 'addbtn rmbtn', type: 'button', title: 'Remove ' + g.name + ' shelf', 'aria-label': 'Remove the ' + g.name + ' shelf', onclick: function (e) { e.stopPropagation(); openRemoveShelf(e.currentTarget, g); }, onkeydown: function (e) { e.stopPropagation(); } }, '✕'))];
           if (isCol) {
@@ -1807,7 +1807,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       h('label', { class: 'field' }, h('span', { text: 'Author name' }), nameIn, dl),
       h('p', { class: 'hint', text: 'Every book on this shelf moves to the new name. If that name already has a shelf, the two shelves are combined.' }),
       h('label', { class: 'field' }, h('span', { text: 'Website to check for new books' }), linkIn),
-      h('p', { class: 'hint', text: 'Optional. Once a website is saved, a ↗ button appears on this shelf and opens it in Safari.' }),
+      h('p', { class: 'hint', text: 'Optional. Once a website is saved, tapping the author name on the shelf opens it in Safari. Tap anywhere else on the bar to open or close the shelf.' }),
       msg,
       h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: closeSheet }, 'Cancel'), go)
     ], from, nameIn);
