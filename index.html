@@ -507,7 +507,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v65';
+  var APP_VERSION = 'v66';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -1447,6 +1447,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var msg = h('p', { class: 'msg', role: 'status' });
     var authorIn = h('input', { id: 'fAuthor', class: 'in', type: 'text', list: 'authorList', autocomplete: 'off', placeholder: 'Brandon Sanderson', value: preset.author || '' });
     var seriesAdd = h('input', { id: 'fSeries', class: 'in', type: 'text', list: 'seriesList', autocomplete: 'off', placeholder: 'Optional', value: preset.series || '' });
+    seriesAdd.addEventListener('blur', function () { var v = titleCase(seriesAdd.value); if (v !== seriesAdd.value) seriesAdd.value = v; });
     var seriesAddDl = h('datalist', { id: 'seriesList' }, uniqueSeries().map(function (a) { return h('option', { value: a }); }));
     var dl = h('datalist', { id: 'authorList' }, uniqueAuthors().map(function (a) { return h('option', { value: a }); }));
     var fileIn = h('input', { id: 'fFiles', class: 'sr', type: 'file', accept: 'image/*', multiple: true });
@@ -1542,7 +1543,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           var up = s.file ? await uploadCover(s.file) : null;
           if (i === 0) setAddFocus(author);
           var ref = db.collection('books').doc();
-          await ref.set({ title: titleCase(s.title), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, dh: up ? up.dh : null, inKindle: !!s.inKindle, status: s.read ? 'read' : 'unread', finishedAt: s.read ? Date.now() : null, series: seriesAdd.value.trim(), seriesNo: String(s.no || '').trim(), createdAt: Date.now() });
+          await ref.set({ title: titleCase(s.title), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, dh: up ? up.dh : null, inKindle: !!s.inKindle, status: s.read ? 'read' : 'unread', finishedAt: s.read ? Date.now() : null, series: titleCase(seriesAdd.value), seriesNo: String(s.no || '').trim(), createdAt: Date.now() });
           done.push(s);
         }
         sheetBusy = false; saving = false;
@@ -1684,6 +1685,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     var authorIn = h('input', { id: 'eAuthor', class: 'in', type: 'text', list: 'authorList2', value: b.author || '', autocomplete: 'off' });
     var dl = h('datalist', { id: 'authorList2' }, uniqueAuthors().map(function (a) { return h('option', { value: a }); }));
     var seriesIn = h('input', { id: 'eSeries', class: 'in', type: 'text', list: 'seriesList2', value: b.series || '', autocomplete: 'off', placeholder: 'Optional, e.g. Stormlight Archive' });
+    seriesIn.addEventListener('blur', function () { var v = titleCase(seriesIn.value); if (v !== seriesIn.value) { seriesIn.value = v; } });
     var seriesDl = h('datalist', { id: 'seriesList2' }, uniqueSeries().map(function (a) { return h('option', { value: a }); }));
     var seriesNoIn = h('input', { id: 'eSeriesNo', class: 'in', type: 'text', inputmode: 'decimal', value: b.seriesNo == null ? '' : String(b.seriesNo), autocomplete: 'off', placeholder: 'e.g. 1' });
     var statusIn = h('select', { id: 'eStatus', class: 'in' },
@@ -1769,7 +1771,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
         var patch = { title: titleCase(titleIn.value), author: author, status: statusIn.value, inKindle: kindleIn.checked };
         if (statusIn.value === 'read') { if (b.status !== 'read' || !b.finishedAt) patch.finishedAt = Date.now(); } else patch.finishedAt = null;
         patch.flat = false;
-        patch.series = seriesIn.value.trim();
+        patch.series = titleCase(seriesIn.value);
         patch.seriesNo = seriesNoIn.value.trim();
         if (newFile) { var up = await uploadCover(newFile); patch.coverId = up.id; patch.color = up.color; patch.accent = up.accent; patch.dh = up.dh; }
         if (newSpine) {
@@ -1869,7 +1871,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     sheet.onsubmit = async function (e) {
       e.preventDefault();
       if (busyNow) return;
-      var nn = nameIn.value.trim();
+      var nn = titleCase(nameIn.value);
       if (!nn) { msg.textContent = 'Enter a name.'; msg.className = 'msg err'; return; }
       if (nn === sr.name) { closeSheet(); return; }
       var oldK = norm(sr.name), au = norm(g.name);
