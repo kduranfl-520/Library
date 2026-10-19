@@ -507,7 +507,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
 
 <script>
 (function () {
-  var APP_VERSION = 'v64';
+  var APP_VERSION = 'v65';
   /* Home screen apps hold on to old copies. On launch, look for a newer version and jump to it. */
   function checkForUpdate(manual) {
     return fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })
@@ -679,6 +679,21 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     return urlCache.get(id) || '';
   }
 
+  /* Title Case: main words get a capital, small words (a, an, and, of, the, ...) stay lowercase unless first, last, or after a colon. Words you typed with their own capitals, like iPhone or VI, are left alone. */
+  var SMALL_WORDS = /^(a|an|and|as|at|but|by|for|in|nor|of|on|or|so|the|to|up|via|vs|yet)$/i;
+  function titleCase(str) {
+    var parts = String(str || '').replace(/\s+/g, ' ').trim().split(' ');
+    var n = parts.length;
+    var out = parts.map(function (w, i) {
+      var first = i === 0 || /[:\u2014\u2013]$|^-$/.test(parts[i - 1]), last = i === n - 1;
+      var core = w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9']+$/g, '');
+      if (!core) return w;
+      if (SMALL_WORDS.test(core) && !first && !last) return w.replace(core, core.toLowerCase());
+      if (core !== core.toLowerCase()) return w;
+      return w.replace(core, core.split('-').map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1); }).join('-'));
+    });
+    return out.join(' ');
+  }
   function guessTitle(name) {
     var base = name.replace(/\.[^.]+$/, '');
     if (/^(img|dsc|dscn|pxl|image|photo|screenshot|scan|wa|mvimg)[\s_-]*\d/i.test(base) || /^[\d\s_-]+$/.test(base)) return '';
@@ -1446,6 +1461,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       list.replaceChildren.apply(list, staged.map(function (s) {
         var thumb = h('div', { class: 'thumb' }, s.url ? h('img', { src: s.url, alt: '' }) : h('div', { class: 'ph', text: 'No cover' }));
         var t = h('input', { class: 'in', type: 'text', value: s.title, placeholder: 'Title', 'aria-label': 'Title', autocomplete: 'off' });
+        t.addEventListener('blur', function () { var v = titleCase(t.value); if (v !== t.value) { t.value = v; s.title = v; } });
         t.addEventListener('input', function () { s.title = t.value; });
         var no = h('input', { class: 'in', type: 'text', inputmode: 'decimal', value: s.no || '', placeholder: 'Number in series (optional)', 'aria-label': 'Number in series', autocomplete: 'off' });
         no.addEventListener('input', function () { s.no = no.value; });
@@ -1526,7 +1542,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
           var up = s.file ? await uploadCover(s.file) : null;
           if (i === 0) setAddFocus(author);
           var ref = db.collection('books').doc();
-          await ref.set({ title: s.title.trim(), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, dh: up ? up.dh : null, inKindle: !!s.inKindle, status: s.read ? 'read' : 'unread', finishedAt: s.read ? Date.now() : null, series: seriesAdd.value.trim(), seriesNo: String(s.no || '').trim(), createdAt: Date.now() });
+          await ref.set({ title: titleCase(s.title), author: author, coverId: up ? up.id : null, color: up ? up.color : null, accent: up ? up.accent : null, dh: up ? up.dh : null, inKindle: !!s.inKindle, status: s.read ? 'read' : 'unread', finishedAt: s.read ? Date.now() : null, series: seriesAdd.value.trim(), seriesNo: String(s.no || '').trim(), createdAt: Date.now() });
           done.push(s);
         }
         sheetBusy = false; saving = false;
@@ -1664,6 +1680,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
     setThumb(b.coverId ? coverSrc(b.coverId) : '');
 
     var titleIn = h('input', { id: 'eTitle', class: 'in', type: 'text', value: b.title || '', autocomplete: 'off' });
+    titleIn.addEventListener('blur', function () { var v = titleCase(titleIn.value); if (v !== titleIn.value) titleIn.value = v; });
     var authorIn = h('input', { id: 'eAuthor', class: 'in', type: 'text', list: 'authorList2', value: b.author || '', autocomplete: 'off' });
     var dl = h('datalist', { id: 'authorList2' }, uniqueAuthors().map(function (a) { return h('option', { value: a }); }));
     var seriesIn = h('input', { id: 'eSeries', class: 'in', type: 'text', list: 'seriesList2', value: b.series || '', autocomplete: 'off', placeholder: 'Optional, e.g. Stormlight Archive' });
@@ -1749,7 +1766,7 @@ button, label.btn, .chip, .fab, .addbtn { touch-action: manipulation; -webkit-ta
       if (!titleIn.value.trim() && !b.coverId && !newFile) { setMsg('A book without a cover needs a title.', true); titleIn.focus(); return; }
       saving = true; sheetBusy = true; saveBtn.disabled = true; setMsg('Saving…');
       try {
-        var patch = { title: titleIn.value.trim(), author: author, status: statusIn.value, inKindle: kindleIn.checked };
+        var patch = { title: titleCase(titleIn.value), author: author, status: statusIn.value, inKindle: kindleIn.checked };
         if (statusIn.value === 'read') { if (b.status !== 'read' || !b.finishedAt) patch.finishedAt = Date.now(); } else patch.finishedAt = null;
         patch.flat = false;
         patch.series = seriesIn.value.trim();
